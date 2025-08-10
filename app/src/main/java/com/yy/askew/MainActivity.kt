@@ -36,6 +36,10 @@ sealed class Screen(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // 初始化HTTP模块
+        com.yy.askew.http.HttpManager.initialize(this)
+        
         setContent {
             AppTheme {
                 Surface(

@@ -73,6 +73,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.10.0") // 日志
     implementation("com.google.code.gson:gson:2.9.0")  // JSON处理
     implementation("net.openid:appauth:0.11.1")  // OAuth2客户端库
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")  // 加密存储
 
 
     testImplementation(libs.junit)
