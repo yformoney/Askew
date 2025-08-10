@@ -19,6 +19,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // AppAuth redirect scheme configuration
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.yy.askew"
     }
 
     buildTypes {
@@ -61,7 +64,15 @@ dependencies {
     implementation(libs.ui.tooling.preview)
     implementation(libs.material3)
     implementation(libs.androidx.lifecycle.viewmodel.compose) // 使用最新稳定版本
-    implementation(libs.androidx.material3) // M3 核心库
+    implementation(libs.androidx.material3)
+//    implementation(libs.androidx.navigation.runtime.android)
+    implementation(libs.androidx.navigation.compose) // M3 核心库
+
+
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")  // 网络请求
+    implementation("com.squareup.okhttp3:logging-interceptor:4.10.0") // 日志
+    implementation("com.google.code.gson:gson:2.9.0")  // JSON处理
+    implementation("net.openid:appauth:0.11.1")  // OAuth2客户端库
 
 
     testImplementation(libs.junit)

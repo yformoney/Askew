@@ -45,6 +45,4 @@ class PerformanceViewModel : ViewModel() {
         Debug.getMemoryInfo(memoryInfo) // 填充当前进程的内存数据
         return memoryInfo.totalPss // 单位：KB
     }
-
-
 }
