@@ -15,11 +15,7 @@ object NetworkClient {
     }
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = if (com.yy.askew.BuildConfig.DEBUG) {
-            HttpLoggingInterceptor.Level.BODY
-        } else {
-            HttpLoggingInterceptor.Level.NONE
-        }
+        level = HttpLoggingInterceptor.Level.BODY // 暂时设为BODY，实际项目中可根据需要调整
     }
     
     val okHttpClient: OkHttpClient by lazy {

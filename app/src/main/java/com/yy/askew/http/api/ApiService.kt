@@ -7,6 +7,7 @@ import com.yy.askew.http.model.ApiResponse
 import com.yy.askew.http.model.ApiResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.lang.reflect.Type
@@ -16,11 +17,12 @@ abstract class ApiService {
     protected val client = NetworkClient.okHttpClient
     protected val gson = Gson()
     
-    protected suspend inline fun <reified T> get(
+    protected suspend fun <T> get(
         url: String,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        type: Type
     ): ApiResult<T> {
-        return executeRequest<T> {
+        return executeRequest(type) {
             Request.Builder()
                 .url(url)
                 .apply {
@@ -32,16 +34,18 @@ abstract class ApiService {
         }
     }
     
-    protected suspend inline fun <reified T> post(
+    protected suspend fun <T> post(
         url: String,
         body: Any? = null,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        type: Type
     ): ApiResult<T> {
-        return executeRequest<T> {
+        return executeRequest(type) {
+            val mediaType = "application/json; charset=utf-8".toMediaType()
             val jsonBody = if (body != null) {
-                gson.toJson(body).toRequestBody(MEDIA_TYPE_JSON)
+                gson.toJson(body).toRequestBody(mediaType)
             } else {
-                "".toRequestBody(MEDIA_TYPE_JSON)
+                "".toRequestBody(mediaType)
             }
             
             Request.Builder()
@@ -56,16 +60,18 @@ abstract class ApiService {
         }
     }
     
-    protected suspend inline fun <reified T> put(
+    protected suspend fun <T> put(
         url: String,
         body: Any? = null,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        type: Type
     ): ApiResult<T> {
-        return executeRequest<T> {
+        return executeRequest(type) {
+            val mediaType = "application/json; charset=utf-8".toMediaType()
             val jsonBody = if (body != null) {
-                gson.toJson(body).toRequestBody(MEDIA_TYPE_JSON)
+                gson.toJson(body).toRequestBody(mediaType)
             } else {
-                "".toRequestBody(MEDIA_TYPE_JSON)
+                "".toRequestBody(mediaType)
             }
             
             Request.Builder()
@@ -80,11 +86,12 @@ abstract class ApiService {
         }
     }
     
-    protected suspend inline fun <reified T> delete(
+    protected suspend fun <T> delete(
         url: String,
-        headers: Map<String, String> = emptyMap()
+        headers: Map<String, String> = emptyMap(),
+        type: Type
     ): ApiResult<T> {
-        return executeRequest<T> {
+        return executeRequest(type) {
             Request.Builder()
                 .url(url)
                 .delete()
@@ -97,8 +104,9 @@ abstract class ApiService {
         }
     }
     
-    protected suspend inline fun <reified T> executeRequest(
-        crossinline requestBuilder: () -> Request
+    private suspend fun <T> executeRequest(
+        type: Type,
+        requestBuilder: () -> Request
     ): ApiResult<T> {
         return withContext(Dispatchers.IO) {
             try {
@@ -109,35 +117,27 @@ abstract class ApiService {
                     val responseBody = resp.body?.string() ?: ""
                     
                     try {
-                        val apiResponse: ApiResponse<T> = gson.fromJson(responseBody, getType<T>())
+                        val apiResponse: ApiResponse<T> = gson.fromJson(responseBody, type)
                         if (apiResponse.success && apiResponse.data != null) {
                             ApiResult.Success(apiResponse.data)
                         } else {
                             ApiResult.Error(NetworkException.ServerError(apiResponse.code, apiResponse.message))
                         }
                     } catch (e: Exception) {
-                        val data: T = gson.fromJson(responseBody, getType<T>())
+                        val data: T = gson.fromJson(responseBody, type)
                         ApiResult.Success(data)
                     }
                 }
             } catch (e: Exception) {
-                ApiResult.Error(e.toNetworkException())
+                ApiResult.Error(convertToNetworkException(e))
             }
         }
     }
     
-    protected inline fun <reified T> getType(): Type {
-        return object : com.google.gson.reflect.TypeToken<ApiResponse<T>>() {}.type
-    }
-    
-    companion object {
-        private val MEDIA_TYPE_JSON = "application/json; charset=utf-8".toRequestBody().contentType()
-    }
-    
-    private fun Exception.toNetworkException(): NetworkException {
-        return when (this) {
-            is NetworkException -> this
-            else -> NetworkException.UnknownError(this.message ?: "未知错误", this)
+    private fun convertToNetworkException(e: Exception): NetworkException {
+        return when (e) {
+            is NetworkException -> e
+            else -> NetworkException.UnknownError(e.message ?: "未知错误", e)
         }
     }
 }

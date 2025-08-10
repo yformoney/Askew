@@ -70,7 +70,7 @@ class AuthApiService : ApiService() {
     }
     
     suspend fun getUserInfo(): ApiResult<UserInfo> {
-        return get("$baseUrl/user/info/")
+        return get("$baseUrl/user/info/", type = object : com.google.gson.reflect.TypeToken<com.yy.askew.http.model.ApiResponse<UserInfo>>() {}.type)
     }
     
     private fun Exception.toNetworkException(): com.yy.askew.http.exception.NetworkException {
