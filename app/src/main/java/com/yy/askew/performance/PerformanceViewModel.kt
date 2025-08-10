@@ -1,11 +1,11 @@
-package com.yy.askew
+package com.yy.askew.performance
 
 import android.os.Debug
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.yy.askew.data.PerformanceMetric
+import com.yy.askew.performance.data.PerformanceMetric
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

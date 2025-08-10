@@ -1,4 +1,4 @@
-package com.yy.askew
+package com.yy.askew.performance
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.yy.askew.data.PerformanceMetric
+import com.yy.askew.performance.data.PerformanceMetric
 
 @Composable
 fun PerformanceTable(metrics: List<PerformanceMetric>) {
