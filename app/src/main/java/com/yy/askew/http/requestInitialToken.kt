@@ -1,13 +1,13 @@
 package com.yy.askew.http
 
 import com.yy.askew.http.model.ApiResult
-import com.yy.askew.http.model.TokenResponse
+import com.yy.askew.http.model.LoginResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // 使用新HTTP模块的示例函数
-suspend fun loginUser(username: String, password: String): ApiResult<TokenResponse> {
+suspend fun loginUser(username: String, password: String): ApiResult<LoginResponse> {
     val authRepository = HttpManager.getAuthRepository()
     return authRepository.login(username, password)
 }
@@ -16,7 +16,7 @@ suspend fun loginUser(username: String, password: String): ApiResult<TokenRespon
 fun loginUserAsync(
     username: String, 
     password: String,
-    onResult: (ApiResult<TokenResponse>) -> Unit
+    onResult: (ApiResult<LoginResponse>) -> Unit
 ) {
     CoroutineScope(Dispatchers.Main).launch {
         val result = loginUser(username, password)

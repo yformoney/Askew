@@ -24,7 +24,8 @@ fun LoginScreen(
     val loginState by viewModel.loginState.collectAsState()
     
     LaunchedEffect(loginState) {
-        if (loginState is ApiResult.Success) {
+        val state = loginState
+        if (state is ApiResult.Success && state.data.success) {
             onLoginSuccess()
         }
     }

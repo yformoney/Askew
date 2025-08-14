@@ -6,8 +6,9 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.yy.askew.http.api.AuthApiService
 import com.yy.askew.http.model.ApiResult
-import com.yy.askew.http.model.TokenResponse
+import com.yy.askew.http.model.LoginResponse
 import com.yy.askew.http.model.UserInfo
+import com.yy.askew.http.model.UserProfileResponse
 
 class AuthRepository(private val context: Context) {
     
@@ -25,73 +26,74 @@ class AuthRepository(private val context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
     
-    suspend fun login(username: String, password: String): ApiResult<TokenResponse> {
-        val result = authApiService.login(username, password, CLIENT_ID)
+    suspend fun login(username: String, password: String): ApiResult<LoginResponse> {
+        val result = authApiService.login(username, password)
         
         if (result is ApiResult.Success) {
-            saveTokens(result.data)
+            saveToken(result.data.token)
+            saveUser(result.data.user)
         }
         
         return result
     }
     
-    suspend fun refreshToken(): ApiResult<TokenResponse> {
-        val refreshToken = getRefreshToken() ?: return ApiResult.Error(
-            com.yy.askew.http.exception.NetworkException.AuthError("无有效的刷新token")
-        )
-        
-        val result = authApiService.refreshToken(refreshToken, CLIENT_ID)
-        
-        if (result is ApiResult.Success) {
-            saveTokens(result.data)
-        } else {
-            clearTokens()
-        }
-        
+    suspend fun logout(): ApiResult<*> {
+        val result = authApiService.logout()
+        clearTokens()
+        clearUser()
         return result
     }
     
-    suspend fun getUserInfo(): ApiResult<UserInfo> {
-        return authApiService.getUserInfo()
+    suspend fun getUserProfile(): ApiResult<UserProfileResponse> {
+        return authApiService.getUserProfile()
     }
     
     fun getAccessToken(): String? {
         return sharedPreferences.getString(KEY_ACCESS_TOKEN, null)
     }
     
-    private fun getRefreshToken(): String? {
-        return sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
+    fun getCurrentUser(): UserInfo? {
+        val userJson = sharedPreferences.getString(KEY_USER_INFO, null)
+        return userJson?.let { 
+            try {
+                com.google.gson.Gson().fromJson(it, UserInfo::class.java)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
     
-    private fun saveTokens(tokenResponse: TokenResponse) {
+    private fun saveToken(token: String) {
         sharedPreferences.edit()
-            .putString(KEY_ACCESS_TOKEN, tokenResponse.accessToken)
-            .putString(KEY_REFRESH_TOKEN, tokenResponse.refreshToken)
-            .putLong(KEY_EXPIRES_AT, System.currentTimeMillis() + tokenResponse.expiresIn * 1000)
+            .putString(KEY_ACCESS_TOKEN, token)
+            .apply()
+    }
+    
+    private fun saveUser(user: UserInfo) {
+        val userJson = com.google.gson.Gson().toJson(user)
+        sharedPreferences.edit()
+            .putString(KEY_USER_INFO, userJson)
             .apply()
     }
     
     fun clearTokens() {
         sharedPreferences.edit()
             .remove(KEY_ACCESS_TOKEN)
-            .remove(KEY_REFRESH_TOKEN)
-            .remove(KEY_EXPIRES_AT)
             .apply()
     }
     
-    fun isTokenExpired(): Boolean {
-        val expiresAt = sharedPreferences.getLong(KEY_EXPIRES_AT, 0)
-        return System.currentTimeMillis() > expiresAt
+    private fun clearUser() {
+        sharedPreferences.edit()
+            .remove(KEY_USER_INFO)
+            .apply()
     }
     
     fun isLoggedIn(): Boolean {
-        return getAccessToken() != null && !isTokenExpired()
+        return getAccessToken() != null
     }
     
     companion object {
-        private const val CLIENT_ID = "ANDROID_CLIENT_ID"
         private const val KEY_ACCESS_TOKEN = "access_token"
-        private const val KEY_REFRESH_TOKEN = "refresh_token"
-        private const val KEY_EXPIRES_AT = "expires_at"
+        private const val KEY_USER_INFO = "user_info"
     }
 }

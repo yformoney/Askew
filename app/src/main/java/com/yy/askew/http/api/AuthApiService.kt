@@ -1,27 +1,27 @@
 package com.yy.askew.http.api
 
 import com.yy.askew.http.model.ApiResult
-import com.yy.askew.http.model.TokenResponse
+import com.yy.askew.http.model.LoginRequest
+import com.yy.askew.http.model.LoginResponse
+import com.yy.askew.http.model.LogoutResponse
 import com.yy.askew.http.model.UserInfo
-import okhttp3.FormBody
+import com.yy.askew.http.model.UserProfileResponse
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class AuthApiService : ApiService() {
     
-    private val baseUrl = "https://your-django-server/o"
+    private val baseUrl = "http://8.138.38.200/api"
     
-    suspend fun login(username: String, password: String, clientId: String): ApiResult<TokenResponse> {
+    suspend fun login(username: String, password: String): ApiResult<LoginResponse> {
         return try {
-            val formBody = FormBody.Builder()
-                .add("grant_type", "password")
-                .add("username", username)
-                .add("password", password)
-                .add("client_id", clientId)
-                .add("scope", "read trade")
-                .build()
+            val loginRequest = LoginRequest(username, password)
+            val json = gson.toJson(loginRequest)
+            val requestBody = json.toRequestBody("application/json".toMediaType())
                 
             val request = okhttp3.Request.Builder()
-                .url("$baseUrl/token/")
-                .post(formBody)
+                .url("$baseUrl/auth/login/")
+                .post(requestBody)
                 .build()
                 
             val response = client.newCall(request).execute()
@@ -29,8 +29,8 @@ class AuthApiService : ApiService() {
             response.use { resp ->
                 if (resp.isSuccessful) {
                     val responseBody = resp.body?.string() ?: ""
-                    val tokenResponse = gson.fromJson(responseBody, TokenResponse::class.java)
-                    ApiResult.Success(tokenResponse)
+                    val loginResponse = gson.fromJson(responseBody, LoginResponse::class.java)
+                    ApiResult.Success(loginResponse)
                 } else {
                     ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError("登录失败"))
                 }
@@ -40,17 +40,11 @@ class AuthApiService : ApiService() {
         }
     }
     
-    suspend fun refreshToken(refreshToken: String, clientId: String): ApiResult<TokenResponse> {
+    suspend fun logout(): ApiResult<LogoutResponse> {
         return try {
-            val formBody = FormBody.Builder()
-                .add("grant_type", "refresh_token")
-                .add("refresh_token", refreshToken)
-                .add("client_id", clientId)
-                .build()
-                
             val request = okhttp3.Request.Builder()
-                .url("$baseUrl/token/")
-                .post(formBody)
+                .url("$baseUrl/auth/logout/")
+                .post("".toRequestBody())
                 .build()
                 
             val response = client.newCall(request).execute()
@@ -58,10 +52,10 @@ class AuthApiService : ApiService() {
             response.use { resp ->
                 if (resp.isSuccessful) {
                     val responseBody = resp.body?.string() ?: ""
-                    val tokenResponse = gson.fromJson(responseBody, TokenResponse::class.java)
-                    ApiResult.Success(tokenResponse)
+                    val logoutResponse = gson.fromJson(responseBody, LogoutResponse::class.java)
+                    ApiResult.Success(logoutResponse)
                 } else {
-                    ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError("刷新token失败"))
+                    ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError("登出失败"))
                 }
             }
         } catch (e: Exception) {
@@ -69,8 +63,27 @@ class AuthApiService : ApiService() {
         }
     }
     
-    suspend fun getUserInfo(): ApiResult<UserInfo> {
-        return get("$baseUrl/user/info/", type = object : com.google.gson.reflect.TypeToken<com.yy.askew.http.model.ApiResponse<UserInfo>>() {}.type)
+    suspend fun getUserProfile(): ApiResult<UserProfileResponse> {
+        return try {
+            val request = okhttp3.Request.Builder()
+                .url("$baseUrl/auth/profile/")
+                .get()
+                .build()
+                
+            val response = client.newCall(request).execute()
+            
+            response.use { resp ->
+                if (resp.isSuccessful) {
+                    val responseBody = resp.body?.string() ?: ""
+                    val profileResponse = gson.fromJson(responseBody, UserProfileResponse::class.java)
+                    ApiResult.Success(profileResponse)
+                } else {
+                    ApiResult.Error(com.yy.askew.http.exception.NetworkException.RequestError("获取用户信息失败"))
+                }
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.toNetworkException())
+        }
     }
     
     private fun Exception.toNetworkException(): com.yy.askew.http.exception.NetworkException {

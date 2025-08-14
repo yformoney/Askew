@@ -10,6 +10,8 @@ sealed class NetworkException(message: String, cause: Throwable? = null) : Excep
     
     class AuthError(message: String = "认证失败", cause: Throwable? = null) : NetworkException(message, cause)
     
+    class RequestError(message: String = "请求失败", cause: Throwable? = null) : NetworkException(message, cause)
+    
     class ParseError(message: String = "数据解析失败", cause: Throwable? = null) : NetworkException(message, cause)
     
     class UnknownError(message: String = "未知错误", cause: Throwable? = null) : NetworkException(message, cause)
