@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderListScreen(
+    onNavigateBack: () -> Unit = {},
     onOrderClick: (String) -> Unit = {},
     orderViewModel: OrderViewModel = viewModel()
 ) {
@@ -36,6 +38,11 @@ fun OrderListScreen(
     ) {
         TopAppBar(
             title = { Text("我的订单") },
+            navigationIcon = {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                }
+            },
             actions = {
                 IconButton(
                     onClick = { orderViewModel.getOrderList() }
