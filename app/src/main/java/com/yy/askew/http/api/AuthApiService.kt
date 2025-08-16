@@ -5,6 +5,8 @@ import com.yy.askew.http.model.ApiResult
 import com.yy.askew.http.model.LoginRequest
 import com.yy.askew.http.model.LoginResponse
 import com.yy.askew.http.model.LogoutResponse
+import com.yy.askew.http.model.RegisterRequest
+import com.yy.askew.http.model.RegisterResponse
 import com.yy.askew.http.model.UserInfo
 import com.yy.askew.http.model.UserProfileResponse
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +72,93 @@ class AuthApiService : ApiService() {
                 }
             } catch (e: Exception) {
                 Log.e("AuthApiService", "登录请求异常", e)
+                ApiResult.Error(e.toNetworkException())
+            }
+        }
+    }
+    
+    suspend fun register(
+        username: String, 
+        password: String, 
+        passwordConfirm: String, 
+        email: String
+    ): ApiResult<RegisterResponse> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("AuthApiService", "开始注册请求: username=$username, email=$email")
+                
+                val registerRequest = RegisterRequest(username, password, passwordConfirm, email)
+                val json = gson.toJson(registerRequest)
+                Log.d("AuthApiService", "注册请求JSON: $json")
+                
+                val requestBody = json.toRequestBody("application/json".toMediaType())
+                
+                val request = okhttp3.Request.Builder()
+                    .url("$baseUrl/auth/register/")
+                    .post(requestBody)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept", "application/json")
+                    .build()
+                
+                Log.d("AuthApiService", "发送注册请求到: ${request.url}")
+                
+                val response = client.newCall(request).execute()
+                
+                response.use { resp ->
+                    val responseBody = resp.body?.string() ?: ""
+                    Log.d("AuthApiService", "注册响应状态码: ${resp.code}")
+                    Log.d("AuthApiService", "注册响应内容: $responseBody")
+                    
+                    if (resp.isSuccessful) {
+                        try {
+                            val registerResponse = gson.fromJson(responseBody, RegisterResponse::class.java)
+                            if (registerResponse.success) {
+                                ApiResult.Success(registerResponse)
+                            } else {
+                                ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError(registerResponse.message))
+                            }
+                        } catch (e: Exception) {
+                            Log.e("AuthApiService", "解析注册响应失败", e)
+                            ApiResult.Error(com.yy.askew.http.exception.NetworkException.UnknownError("响应解析失败: ${e.message}", e))
+                        }
+                    } else {
+                        // 尝试解析错误响应
+                        try {
+                            val errorResponse = gson.fromJson(responseBody, RegisterResponse::class.java)
+                            ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError(errorResponse.message ?: "注册失败"))
+                        } catch (e: Exception) {
+                            // 如果无法解析为RegisterResponse，尝试解析为通用错误格式
+                            try {
+                                val errorJson = gson.fromJson(responseBody, Map::class.java)
+                                val message = errorJson["message"] as? String ?: "注册失败"
+                                val errors = errorJson["errors"] as? Map<String, Any>
+                                
+                                val errorMessage = if (errors != null) {
+                                    val errorList = mutableListOf<String>()
+                                    errors.forEach { (field, error) ->
+                                        when (error) {
+                                            is List<*> -> {
+                                                error.forEach { errorItem ->
+                                                    errorList.add("$field: $errorItem")
+                                                }
+                                            }
+                                            else -> errorList.add("$field: $error")
+                                        }
+                                    }
+                                    errorList.joinToString("\n")
+                                } else {
+                                    message
+                                }
+                                
+                                ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError(errorMessage))
+                            } catch (e2: Exception) {
+                                ApiResult.Error(com.yy.askew.http.exception.NetworkException.AuthError("注册失败: HTTP ${resp.code}"))
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("AuthApiService", "注册请求异常", e)
                 ApiResult.Error(e.toNetworkException())
             }
         }

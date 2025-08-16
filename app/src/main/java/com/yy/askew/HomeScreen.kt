@@ -70,6 +70,7 @@ import com.yy.askew.http.example.AuthViewModel
 import com.yy.askew.ui.TaxiOrderScreen
 import com.yy.askew.ui.OrderListScreen
 import com.yy.askew.http.example.LoginScreen
+import com.yy.askew.http.example.RegisterScreen
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -167,6 +168,19 @@ fun NavHostContainer(
         composable("login") {
             LoginScreen(
                 onLoginSuccess = {
+                    navController.popBackStack()
+                },
+                onNavigateToRegister = {
+                    navController.navigate("register")
+                }
+            )
+        }
+        composable("register") {
+            RegisterScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onRegisterSuccess = {
                     navController.popBackStack()
                 }
             )

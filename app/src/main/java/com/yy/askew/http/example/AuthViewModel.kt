@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.yy.askew.http.HttpManager
 import com.yy.askew.http.model.ApiResult
 import com.yy.askew.http.model.LoginResponse
+import com.yy.askew.http.model.RegisterResponse
 import com.yy.askew.http.model.UserInfo
 import com.yy.askew.http.model.UserProfileResponse
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,9 @@ class AuthViewModel : ViewModel() {
     private val _loginState = MutableStateFlow<ApiResult<LoginResponse>?>(null)
     val loginState: StateFlow<ApiResult<LoginResponse>?> = _loginState
     
+    private val _registerState = MutableStateFlow<ApiResult<RegisterResponse>?>(null)
+    val registerState: StateFlow<ApiResult<RegisterResponse>?> = _registerState
+    
     private val _userProfile = MutableStateFlow<ApiResult<UserProfileResponse>?>(null)
     val userProfile: StateFlow<ApiResult<UserProfileResponse>?> = _userProfile
     
@@ -29,6 +33,14 @@ class AuthViewModel : ViewModel() {
             _loginState.value = ApiResult.Loading()
             val result = authRepository.login(username, password)
             _loginState.value = result
+        }
+    }
+    
+    fun register(username: String, password: String, passwordConfirm: String, email: String) {
+        viewModelScope.launch {
+            _registerState.value = ApiResult.Loading()
+            val result = authRepository.register(username, password, passwordConfirm, email)
+            _registerState.value = result
         }
     }
     

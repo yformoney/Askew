@@ -7,6 +7,7 @@ import androidx.security.crypto.MasterKey
 import com.yy.askew.http.api.AuthApiService
 import com.yy.askew.http.model.ApiResult
 import com.yy.askew.http.model.LoginResponse
+import com.yy.askew.http.model.RegisterResponse
 import com.yy.askew.http.model.UserInfo
 import com.yy.askew.http.model.UserProfileResponse
 
@@ -30,6 +31,22 @@ class AuthRepository(private val context: Context) {
         val result = authApiService.login(username, password)
         
         if (result is ApiResult.Success) {
+            saveToken(result.data.token)
+            saveUser(result.data.user)
+        }
+        
+        return result
+    }
+    
+    suspend fun register(
+        username: String, 
+        password: String, 
+        passwordConfirm: String, 
+        email: String
+    ): ApiResult<RegisterResponse> {
+        val result = authApiService.register(username, password, passwordConfirm, email)
+        
+        if (result is ApiResult.Success && result.data.token != null && result.data.user != null) {
             saveToken(result.data.token)
             saveUser(result.data.user)
         }

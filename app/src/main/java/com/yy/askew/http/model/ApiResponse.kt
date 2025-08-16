@@ -58,6 +58,17 @@ data class LoginRequest(
     val password: String
 )
 
+data class RegisterRequest(
+    @SerializedName("username")
+    val username: String,
+    @SerializedName("password")
+    val password: String,
+    @SerializedName("password_confirm")
+    val passwordConfirm: String,
+    @SerializedName("email")
+    val email: String
+)
+
 data class LoginResponse(
     @SerializedName("success")
     val success: Boolean,
@@ -67,6 +78,17 @@ data class LoginResponse(
     val token: String,
     @SerializedName("user")
     val user: UserInfo
+)
+
+data class RegisterResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("token")
+    val token: String?,
+    @SerializedName("user")
+    val user: UserInfo?
 )
 
 data class LogoutResponse(

@@ -16,6 +16,7 @@ import com.yy.askew.http.model.ApiResult
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit = {},
+    onNavigateToRegister: () -> Unit = {},
     viewModel: AuthViewModel = viewModel()
 ) {
     var username by remember { mutableStateOf("") }
@@ -90,6 +91,23 @@ fun LoginScreen(
                     )
                 }
                 else -> {}
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "还没有账号？",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            TextButton(onClick = onNavigateToRegister) {
+                Text("立即注册")
             }
         }
     }
