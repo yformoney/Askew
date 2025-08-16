@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -35,6 +36,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -196,6 +198,18 @@ fun NavHostContainer(
                 }
             )
         }
+        composable("place_search") {
+            com.yy.askew.map.PlaceSearchScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onPlaceSelected = { suggestion ->
+                    // 获取MapViewModel实例并设置终点
+                    // 这里需要通过某种方式获取MapViewModel实例
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
 
@@ -212,345 +226,73 @@ fun HomePage(navController: NavController? = null) {
     
     val mapViewModel: MapViewModel = viewModel()
     val mapState by mapViewModel.mapState.collectAsState()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                )
-            )
+    
+    // 全屏地图布局
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // 顶部状态栏和用户欢迎区域
-        Box(
+        // 全屏地图作为背景
+        MapComponent(
+            modifier = Modifier.fillMaxSize(),
+            mapViewModel = mapViewModel,
+            onLocationSelected = { latitude, longitude, address ->
+                mapViewModel.updateEndLocation(latitude, longitude, address)
+            }
+        )
+        
+        // 顶部搜索栏
+        TopSearchBar(
+            mapState = mapState,
+            mapViewModel = mapViewModel,
+            onSearchClick = {
+                navController?.navigate("place_search")
+            },
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-                        )
-                    )
-                )
+                .align(Alignment.TopCenter)
                 .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = "你好，欢迎使用 Askew 出行",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "位置",
-                        tint = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = mapState.userLocation?.address ?: "正在获取您的位置...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
-            }
-        }
-        
-        // 服务类型选择区域
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "选择出行服务",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = MaterialTheme.colorScheme.onSurface
         )
         
-        Row(
+        // 底部打车操作栏
+        BottomTaxiCard(
+            mapState = mapState,
+            isLoggedIn = isLoggedIn,
+            onTaxiClick = {
+                when {
+                    !isLoggedIn -> navController?.navigate("login")
+                    mapState.startLocation == null -> {
+                        mapViewModel.setStartLocationAsCurrentLocation()
+                    }
+                    mapState.endLocation == null -> {
+                        // 提示用户选择目的地
+                    }
+                    else -> navController?.navigate("taxi_order")
+                }
+            },
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ServiceTypeCard(
-                icon = Icons.Default.Add,
-                title = "快车",
-                subtitle = "经济实惠",
-                color = MaterialTheme.colorScheme.primary,
-                isSelected = true,
-                onClick = { },
-                modifier = Modifier.weight(1f)
-            )
-            ServiceTypeCard(
-                icon = Icons.Default.Person,
-                title = "专车",
-                subtitle = "舒适专享",
-                color = MaterialTheme.colorScheme.tertiary,
-                isSelected = false,
-                onClick = { },
-                modifier = Modifier.weight(1f)
-            )
-            ServiceTypeCard(
-                icon = Icons.Default.Star,
-                title = "豪华车",
-                subtitle = "高端体验",
-                color = MaterialTheme.colorScheme.secondary,
-                isSelected = false,
-                onClick = { },
-                modifier = Modifier.weight(1f)
-            )
-        }
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
         
-        // 主要叫车卡片
-        Spacer(modifier = Modifier.height(16.dp))
-        ElevatedCard(
+        // 右侧悬浮按钮
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
-            shape = RoundedCornerShape(20.dp)
+                .align(Alignment.CenterEnd)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // 当前位置按钮
+            FloatingActionButton(
+                onClick = { mapViewModel.getCurrentLocation() },
+                modifier = Modifier.size(48.dp),
+                containerColor = Color.White,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
-                // 地图组件
-                MapComponent(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    mapViewModel = mapViewModel,
-                    onLocationSelected = { latitude, longitude, address ->
-                        // 用户点击地图时，设置为目的地
-                        mapViewModel.updateEndLocation(latitude, longitude, address)
-                    }
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "当前位置"
                 )
-                
-                // 起点输入框
-                OutlinedTextField(
-                    value = mapState.startLocation?.address ?: mapState.userLocation?.address ?: "",
-                    onValueChange = { },
-                    label = { Text("您在哪里？") },
-                    placeholder = { Text("点击获取当前位置") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            mapViewModel.setStartLocationAsCurrentLocation()
-                        },
-                    enabled = false,
-                    leadingIcon = { 
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    CircleShape
-                                )
-                        )
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "当前位置",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
-                                mapViewModel.setStartLocationAsCurrentLocation()
-                            }
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
-                
-                // 目的地输入框
-                OutlinedTextField(
-                    value = mapState.endLocation?.address ?: "",
-                    onValueChange = { },
-                    label = { Text("要去哪里？") },
-                    placeholder = { Text("在地图上点击选择目的地") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = false,
-                    leadingIcon = { 
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.tertiary,
-                                    CircleShape
-                                )
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp)
-                )
-                
-                // 立即叫车按钮
-                val canOrderTaxi = isLoggedIn && 
-                    mapState.startLocation != null && 
-                    mapState.endLocation != null
-                
-                Button(
-                    onClick = { 
-                        when {
-                            !isLoggedIn -> navController?.navigate("login")
-                            mapState.startLocation == null -> {
-                                mapViewModel.setStartLocationAsCurrentLocation()
-                            }
-                            mapState.endLocation == null -> {
-                                // 提示用户在地图上选择目的地
-                            }
-                            else -> navController?.navigate("taxi_order")
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    enabled = canOrderTaxi,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = when {
-                            !isLoggedIn -> MaterialTheme.colorScheme.secondary
-                            canOrderTaxi -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.outline
-                        }
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "叫车",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = when {
-                                !isLoggedIn -> "登录后叫车"
-                                mapState.startLocation == null -> "获取当前位置"
-                                mapState.endLocation == null -> "选择目的地"
-                                else -> "立即叫车"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                
-                // 显示路线信息
-                mapState.routeInfo?.let { routeInfo ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "路线预览",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "距离: ${String.format("%.1f", routeInfo.distance / 1000.0)}公里",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = "时间: ${routeInfo.duration / 60}分钟",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = "预估: ¥${String.format("%.2f", routeInfo.cost)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // 快捷服务区域
-        Text(
-            text = "快捷服务",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            QuickServiceCard(
-                icon = Icons.Default.List,
-                title = "历史订单",
-                subtitle = "查看出行记录",
-                onClick = { navController?.navigate("order_list") },
-                modifier = Modifier.weight(1f)
-            )
-            
-            QuickServiceCard(
-                icon = Icons.Default.Star,
-                title = "常用地址",
-                subtitle = "添加常去地点",
-                onClick = { /* TODO */ },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            QuickServiceCard(
-                icon = Icons.Default.Person,
-                title = "个人中心",
-                subtitle = "账户与设置",
-                onClick = { /* 已在底部导航 */ },
-                modifier = Modifier.weight(1f)
-            )
-            
-            QuickServiceCard(
-                icon = Icons.Default.Settings,
-                title = "帮助中心",
-                subtitle = "常见问题",
-                onClick = { /* TODO */ },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(80.dp)) // 底部间距
     }
 }
 
@@ -1048,6 +790,237 @@ fun ProfileMenuItem(
             modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+// 顶部搜索栏组件
+@Composable
+fun TopSearchBar(
+    mapState: com.yy.askew.map.data.MapState,
+    mapViewModel: MapViewModel,
+    onSearchClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // 起点输入框
+            OutlinedTextField(
+                value = mapState.startLocation?.address ?: mapState.userLocation?.address ?: "",
+                onValueChange = { },
+                label = { Text("您在哪里？", style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text("点击获取当前位置") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        mapViewModel.setStartLocationAsCurrentLocation()
+                    },
+                enabled = false,
+                leadingIcon = { 
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                CircleShape
+                            )
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "当前位置",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                mapViewModel.setStartLocationAsCurrentLocation()
+                            }
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // 终点输入框
+            OutlinedTextField(
+                value = mapState.endLocation?.address ?: "",
+                onValueChange = { },
+                label = { Text("要去哪里？", style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text("搜索目的地") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSearchClick() },
+                enabled = false,
+                leadingIcon = { 
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.error,
+                                CircleShape
+                            )
+                    )
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "搜索",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+            
+            // 路线信息（如果有的话）
+            mapState.routeInfo?.let { routeInfo ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${String.format("%.1f", routeInfo.distance / 1000.0)}公里",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${routeInfo.duration / 60}分钟",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "¥${String.format("%.2f", routeInfo.cost)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 底部打车操作栏
+@Composable
+fun BottomTaxiCard(
+    mapState: com.yy.askew.map.data.MapState,
+    isLoggedIn: Boolean,
+    onTaxiClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val canOrderTaxi = isLoggedIn && 
+        mapState.startLocation != null && 
+        mapState.endLocation != null
+    
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            // 服务类型选择
+            if (mapState.routeInfo != null) {
+                Text(
+                    text = "选择车型",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ServiceTypeCard(
+                        icon = Icons.Default.Add,
+                        title = "快车",
+                        subtitle = "¥${String.format("%.2f", mapState.routeInfo.cost)}",
+                        color = MaterialTheme.colorScheme.primary,
+                        isSelected = true,
+                        onClick = { },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ServiceTypeCard(
+                        icon = Icons.Default.Person,
+                        title = "专车",
+                        subtitle = "¥${String.format("%.2f", mapState.routeInfo.cost * 1.5)}",
+                        color = MaterialTheme.colorScheme.tertiary,
+                        isSelected = false,
+                        onClick = { },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ServiceTypeCard(
+                        icon = Icons.Default.Star,
+                        title = "豪华车",
+                        subtitle = "¥${String.format("%.2f", mapState.routeInfo.cost * 2.0)}",
+                        color = MaterialTheme.colorScheme.secondary,
+                        isSelected = false,
+                        onClick = { },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // 叫车按钮
+            Button(
+                onClick = onTaxiClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = canOrderTaxi,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = when {
+                        !isLoggedIn -> MaterialTheme.colorScheme.secondary
+                        canOrderTaxi -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.outline
+                    }
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "叫车",
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = when {
+                            !isLoggedIn -> "登录后叫车"
+                            mapState.startLocation == null -> "获取当前位置"
+                            mapState.endLocation == null -> "选择目的地"
+                            else -> "立即叫车"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }
 

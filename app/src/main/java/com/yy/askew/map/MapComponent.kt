@@ -188,131 +188,81 @@ private fun ActualMapComponent(
     val mapView = remember { MapView(context) }
     var aMap: AMap? = null
     
-    Box(modifier = modifier) {
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize()
-        ) { view ->
-            view.map?.let { map ->
-                aMap = map
+    AndroidView(
+        factory = { mapView },
+        modifier = modifier
+    ) { view ->
+        view.map?.let { map ->
+            aMap = map
+            
+            // 设置地图属性
+            map.uiSettings.isZoomControlsEnabled = false
+            map.uiSettings.isMyLocationButtonEnabled = false
+            map.uiSettings.isCompassEnabled = false
+            map.uiSettings.isScaleControlsEnabled = false
+            map.isMyLocationEnabled = true
+            
+            // 地图点击事件
+            map.setOnMapClickListener { latLng ->
+                onLocationSelected?.invoke(
+                    latLng.latitude,
+                    latLng.longitude,
+                    "" // 地址将在ViewModel中获取
+                )
+            }
+            
+            // 清除之前的标记
+            map.clear()
+            
+            // 更新用户位置
+            mapState.userLocation?.let { location ->
+                val latLng = LatLng(location.latitude, location.longitude)
                 
-                // 设置地图属性
-                map.uiSettings.isZoomControlsEnabled = false
-                map.uiSettings.isMyLocationButtonEnabled = false
-                map.isMyLocationEnabled = true
-                
-                // 设置自定义定位样式（2D地图简化版）
-                map.isMyLocationEnabled = true
-                
-                // 地图点击事件
-                map.setOnMapClickListener { latLng ->
-                    onLocationSelected?.invoke(
-                        latLng.latitude,
-                        latLng.longitude,
-                        "" // 地址将在ViewModel中获取
-                    )
-                }
-                
-                // 更新用户位置
-                mapState.userLocation?.let { location ->
-                    val latLng = LatLng(location.latitude, location.longitude)
+                // 如果没有起点和终点，聚焦到当前位置
+                if (mapState.startLocation == null && mapState.endLocation == null) {
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition(latLng, 16f, 0f, 0f)
                         )
                     )
                 }
-                
-                // 添加起点标记
-                mapState.startLocation?.let { location ->
-                    val marker = MarkerOptions()
-                        .position(LatLng(location.latitude, location.longitude))
-                        .title("起点")
-                        .snippet(location.address)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                    map.addMarker(marker)
-                }
-                
-                // 添加终点标记
-                mapState.endLocation?.let { location ->
-                    val marker = MarkerOptions()
-                        .position(LatLng(location.latitude, location.longitude))
-                        .title("终点")
-                        .snippet(location.address)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                    map.addMarker(marker)
-                }
             }
-        }
-        
-        // 悬浮的当前位置按钮
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .size(48.dp)
-                .background(
-                    Color.White,
-                    CircleShape
+            
+            // 添加起点标记
+            mapState.startLocation?.let { location ->
+                val marker = MarkerOptions()
+                    .position(LatLng(location.latitude, location.longitude))
+                    .title("起点")
+                    .snippet(location.address.ifEmpty { "当前位置" })
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                map.addMarker(marker)
+            }
+            
+            // 添加终点标记
+            mapState.endLocation?.let { location ->
+                val marker = MarkerOptions()
+                    .position(LatLng(location.latitude, location.longitude))
+                    .title("终点")
+                    .snippet(location.address.ifEmpty { "目的地" })
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                map.addMarker(marker)
+            }
+            
+            // 如果有起点和终点，调整视野以包含两点
+            if (mapState.startLocation != null && mapState.endLocation != null) {
+                val startLatLng = LatLng(mapState.startLocation.latitude, mapState.startLocation.longitude)
+                val endLatLng = LatLng(mapState.endLocation.latitude, mapState.endLocation.longitude)
+                
+                // 计算边界
+                val boundsBuilder = com.amap.api.maps2d.model.LatLngBounds.Builder()
+                boundsBuilder.include(startLatLng)
+                boundsBuilder.include(endLatLng)
+                val bounds = boundsBuilder.build()
+                
+                // 调整视野
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(bounds, 100)
                 )
-                .clickable { onCurrentLocationClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = "当前位置",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        
-        // 显示路线信息
-        mapState.routeInfo?.let { routeInfo ->
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row {
-                        Text(
-                            text = "距离: ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${routeInfo.distance / 1000.0} 公里",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "时间: ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${routeInfo.duration / 60} 分钟",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row {
-                        Text(
-                            text = "预估费用: ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "¥${String.format("%.2f", routeInfo.cost)}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
     }
