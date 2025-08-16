@@ -247,6 +247,22 @@ class MapRepository(private val context: Context) {
         )
     }
     
+    // 清除模拟位置标记（用于强制GPS定位）
+    fun clearSimulatedLocation() {
+        // 这个方法主要用于标记需要重新获取GPS位置
+        // 实际的GPS获取在getCurrentLocation中处理
+    }
+    
+    // 触发地图重新居中到用户位置
+    fun triggerMapRecenter() {
+        _mapState.value = _mapState.value.copy(shouldCenterOnUser = true)
+    }
+    
+    // 重置地图居中标记
+    fun resetMapCenterFlag() {
+        _mapState.value = _mapState.value.copy(shouldCenterOnUser = false)
+    }
+    
     fun cleanup() {
         locationClient?.stopLocation()
         locationClient?.onDestroy()

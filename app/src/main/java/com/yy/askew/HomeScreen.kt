@@ -217,6 +217,8 @@ fun NavHostContainer(
                         suggestion.longitude,
                         suggestion.address.ifEmpty { suggestion.name }
                     )
+                    // 如果还没有起点，自动设置当前位置为起点
+                    parentMapViewModel.ensureStartLocationAndCalculateRoute()
                     navController.popBackStack()
                 }
             )
@@ -305,14 +307,17 @@ fun HomePage(navController: NavController? = null) {
         ) {
             // 当前位置按钮
             FloatingActionButton(
-                onClick = { mapViewModel.getCurrentLocation() },
+                onClick = { 
+                    // 获取当前真实GPS位置并居中显示
+                    mapViewModel.centerOnCurrentLocation()
+                },
                 modifier = Modifier.size(48.dp),
                 containerColor = Color.White,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = "当前位置"
+                    contentDescription = "定位到当前位置"
                 )
             }
         }

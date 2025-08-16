@@ -46,7 +46,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun getCurrentLocation() {
         viewModelScope.launch {
             try {
-                repository.getCurrentLocation()
+                // 强制获取新的GPS位置，而不是使用缓存的模拟位置
+                val currentLocation = repository.getCurrentLocation()
+                currentLocation?.let { location ->
+                    // 如果成功获取到真实GPS位置，清除模拟位置标记
+                    repository.clearSimulatedLocation()
+                }
             } catch (e: Exception) {
                 // 错误处理已在repository中实现
             }
@@ -121,6 +126,50 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun setSimulatedLocation(latitude: Double, longitude: Double, address: String) {
         val simulatedLocation = Location(latitude, longitude, address, "模拟位置")
         repository.setSimulatedLocation(simulatedLocation)
+    }
+    
+    // 确保有起点并计算路线
+    fun ensureStartLocationAndCalculateRoute() {
+        val currentState = mapState.value
+        
+        // 如果没有起点，设置当前位置为起点
+        if (currentState.startLocation == null) {
+            currentState.userLocation?.let { userLocation ->
+                repository.updateStartLocation(userLocation)
+            }
+        }
+        
+        // 如果现在有起点和终点，计算路线
+        val startLoc = currentState.startLocation ?: currentState.userLocation
+        val endLoc = currentState.endLocation
+        
+        if (startLoc != null && endLoc != null) {
+            viewModelScope.launch {
+                repository.calculateRoute(startLoc, endLoc)
+            }
+        }
+    }
+    
+    // 定位到当前位置并居中显示
+    fun centerOnCurrentLocation() {
+        viewModelScope.launch {
+            try {
+                val currentLocation = repository.getCurrentLocation()
+                currentLocation?.let { location ->
+                    // 清除模拟位置标记，确保使用真实GPS
+                    repository.clearSimulatedLocation()
+                    // 触发地图重新居中（通过状态更新）
+                    repository.triggerMapRecenter()
+                }
+            } catch (e: Exception) {
+                // 错误处理已在repository中实现
+            }
+        }
+    }
+    
+    // 重置地图居中标记
+    fun resetMapCenterFlag() {
+        repository.resetMapCenterFlag()
     }
     
     override fun onCleared() {

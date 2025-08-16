@@ -47,5 +47,6 @@ data class MapState(
     val isLocationEnabled: Boolean = false,
     val permissionState: LocationPermissionState = LocationPermissionState.Requesting,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val shouldCenterOnUser: Boolean = false // 用于触发地图居中到用户位置
 )

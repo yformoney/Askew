@@ -126,6 +126,7 @@ fun MapComponent(
             ActualMapComponent(
                 modifier = modifier,
                 mapState = mapState,
+                mapViewModel = mapViewModel,
                 onLocationSelected = onLocationSelected,
                 onCurrentLocationClick = { mapViewModel.getCurrentLocation() }
             )
@@ -183,12 +184,22 @@ private fun PermissionDeniedContent(
 private fun ActualMapComponent(
     modifier: Modifier = Modifier,
     mapState: com.yy.askew.map.data.MapState,
+    mapViewModel: MapViewModel,
     onLocationSelected: ((latitude: Double, longitude: Double, address: String) -> Unit)?,
     onCurrentLocationClick: () -> Unit
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
     var aMap: AMap? = null
+    
+    // 处理shouldCenterOnUser标记的重置
+    LaunchedEffect(mapState.shouldCenterOnUser) {
+        if (mapState.shouldCenterOnUser) {
+            // 等待一帧后重置标记，确保地图已经居中
+            kotlinx.coroutines.delay(100)
+            mapViewModel.resetMapCenterFlag()
+        }
+    }
     
     AndroidView(
         factory = { mapView },
@@ -220,13 +231,14 @@ private fun ActualMapComponent(
             mapState.userLocation?.let { location ->
                 val latLng = LatLng(location.latitude, location.longitude)
                 
-                // 如果没有起点和终点，聚焦到当前位置
-                if (mapState.startLocation == null && mapState.endLocation == null) {
+                // 如果没有起点和终点，或者需要强制居中到用户位置
+                if (mapState.startLocation == null && mapState.endLocation == null || mapState.shouldCenterOnUser) {
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition(latLng, 16f, 0f, 0f)
                         )
                     )
+                    
                 }
             }
             
