@@ -74,6 +74,11 @@ dependencies {
     implementation("com.google.code.gson:gson:2.9.0")  // JSON处理
     implementation("net.openid:appauth:0.11.1")  // OAuth2客户端库
     implementation("androidx.security:security-crypto:1.1.0-alpha06")  // 加密存储
+    
+    // 高德地图SDK - 使用统一版本避免冲突
+    implementation("com.amap.api:map2d:6.0.0")  // 2D地图
+    implementation("com.amap.api:location:6.4.3")  // 定位
+    implementation("com.amap.api:search:9.5.0")  // 搜索
 
 
     testImplementation(libs.junit)
