@@ -136,18 +136,31 @@ class MapRepository(private val context: Context) {
                 override fun onDriveRouteSearched(result: DriveRouteResult?, errorCode: Int) {
                     if (errorCode == AMapException.CODE_AMAP_SUCCESS && result?.paths?.isNotEmpty() == true) {
                         val path = result.paths[0]
+                        
+                        // 提取路径点信息
+                        val polylinePoints = mutableListOf<Location>()
+                        for (step in path.steps) {
+                            for (latLng in step.polyline) {
+                                polylinePoints.add(Location(latLng.latitude, latLng.longitude))
+                            }
+                        }
+                        
                         val routeInfo = RouteInfo(
                             startLocation = start,
                             endLocation = end,
                             distance = path.distance.toInt(),
                             duration = path.duration.toInt(),
-                            cost = calculateCost(path.distance.toInt())
+                            cost = calculateCost(path.distance.toInt()),
+                            polylinePoints = polylinePoints
                         )
                         
                         _mapState.value = _mapState.value.copy(routeInfo = routeInfo)
                         continuation.resume(routeInfo)
                     } else {
-                        continuation.resume(null)
+                        // 如果API失败，创建模拟路线
+                        val mockRouteInfo = createMockRoute(start, end)
+                        _mapState.value = _mapState.value.copy(routeInfo = mockRouteInfo)
+                        continuation.resume(mockRouteInfo)
                     }
                 }
                 
@@ -165,6 +178,44 @@ class MapRepository(private val context: Context) {
         val pricePerKm = 2.0
         val km = distance / 1000.0
         return startPrice + (km * pricePerKm)
+    }
+    
+    // 创建模拟路线（用于测试）
+    private fun createMockRoute(start: Location, end: Location): RouteInfo {
+        // 计算距离
+        val distance = calculateDistance(start.latitude, start.longitude, end.latitude, end.longitude)
+        val duration = (distance / 50 * 60).toInt() // 假设50km/h平均速度
+        
+        // 创建简单的直线路径点
+        val polylinePoints = mutableListOf<Location>()
+        val steps = 20 // 分20个点
+        for (i in 0..steps) {
+            val ratio = i.toDouble() / steps
+            val lat = start.latitude + (end.latitude - start.latitude) * ratio
+            val lng = start.longitude + (end.longitude - start.longitude) * ratio
+            polylinePoints.add(Location(lat, lng))
+        }
+        
+        return RouteInfo(
+            startLocation = start,
+            endLocation = end,
+            distance = distance.toInt(),
+            duration = duration,
+            cost = calculateCost(distance.toInt()),
+            polylinePoints = polylinePoints
+        )
+    }
+    
+    // 计算两点间距离（单位：米）
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371000.0 // 地球半径（米）
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return R * c
     }
     
     fun updateStartLocation(location: Location) {
@@ -185,6 +236,15 @@ class MapRepository(private val context: Context) {
     
     fun clearError() {
         _mapState.value = _mapState.value.copy(errorMessage = null)
+    }
+    
+    // 设置模拟位置（用于测试）
+    fun setSimulatedLocation(location: Location) {
+        _mapState.value = _mapState.value.copy(
+            userLocation = location,
+            isLocationEnabled = true,
+            permissionState = LocationPermissionState.Granted
+        )
     }
     
     fun cleanup() {

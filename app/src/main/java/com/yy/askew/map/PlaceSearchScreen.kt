@@ -131,7 +131,7 @@ private fun TopSearchHeader(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("搜索地点") },
+                placeholder = { Text("搜索地点，如：广州南、天河城") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,

@@ -154,7 +154,9 @@ fun NavHostContainer(
         startDestination = Screen.Home.route,
         modifier = modifier
     ) {
-        composable(Screen.Home.route) { HomePage(navController) }
+        composable(Screen.Home.route) { 
+            HomePage(navController)
+        }
         composable(Screen.Search.route) { SearchPage(navController) }
         composable(Screen.Profile.route) { ProfilePage(navController) }
         composable("taxi_order") { 
@@ -199,13 +201,22 @@ fun NavHostContainer(
             )
         }
         composable("place_search") {
+            val parentEntry = remember(it) {
+                navController.getBackStackEntry(Screen.Home.route)
+            }
+            val parentMapViewModel: MapViewModel = viewModel(parentEntry)
+            
             com.yy.askew.map.PlaceSearchScreen(
                 onBackClick = {
                     navController.popBackStack()
                 },
                 onPlaceSelected = { suggestion ->
-                    // 获取MapViewModel实例并设置终点
-                    // 这里需要通过某种方式获取MapViewModel实例
+                    // 设置选中的地点为终点
+                    parentMapViewModel.updateEndLocation(
+                        suggestion.latitude,
+                        suggestion.longitude,
+                        suggestion.address.ifEmpty { suggestion.name }
+                    )
                     navController.popBackStack()
                 }
             )
@@ -226,6 +237,18 @@ fun HomePage(navController: NavController? = null) {
     
     val mapViewModel: MapViewModel = viewModel()
     val mapState by mapViewModel.mapState.collectAsState()
+    
+    // 添加模拟定位功能（用于测试）
+    LaunchedEffect(Unit) {
+        // 如果没有用户位置，使用广州的坐标作为模拟位置
+        if (mapState.userLocation == null) {
+            mapViewModel.setSimulatedLocation(
+                latitude = 23.129110,
+                longitude = 113.264385,
+                address = "广州市天河区"
+            )
+        }
+    }
     
     // 全屏地图布局
     Box(

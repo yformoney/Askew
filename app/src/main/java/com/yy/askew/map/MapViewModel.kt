@@ -117,6 +117,12 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         repository.clearError()
     }
     
+    // 添加模拟定位功能（用于测试）
+    fun setSimulatedLocation(latitude: Double, longitude: Double, address: String) {
+        val simulatedLocation = Location(latitude, longitude, address, "模拟位置")
+        repository.setSimulatedLocation(simulatedLocation)
+    }
+    
     override fun onCleared() {
         super.onCleared()
         repository.cleanup()

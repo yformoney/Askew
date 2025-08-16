@@ -29,7 +29,8 @@ data class RouteInfo(
     val endLocation: Location,
     val distance: Int = 0, // 距离（米）
     val duration: Int = 0, // 时间（秒）
-    val cost: Double = 0.0 // 预估费用
+    val cost: Double = 0.0, // 预估费用
+    val polylinePoints: List<Location> = emptyList() // 路线轨迹点
 )
 
 sealed class LocationPermissionState {

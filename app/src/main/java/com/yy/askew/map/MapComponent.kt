@@ -51,6 +51,8 @@ import com.amap.api.maps2d.model.CameraPosition
 import com.amap.api.maps2d.model.LatLng
 import com.amap.api.maps2d.model.MarkerOptions
 import com.amap.api.maps2d.model.MyLocationStyle
+import com.amap.api.maps2d.model.Polyline
+import com.amap.api.maps2d.model.PolylineOptions
 import com.yy.askew.map.data.LocationPermissionState
 
 @Composable
@@ -248,6 +250,22 @@ private fun ActualMapComponent(
                 map.addMarker(marker)
             }
             
+            // 绘制路线
+            mapState.routeInfo?.let { routeInfo ->
+                if (routeInfo.polylinePoints.isNotEmpty()) {
+                    val latLngs = routeInfo.polylinePoints.map { 
+                        LatLng(it.latitude, it.longitude) 
+                    }
+                    
+                    val polylineOptions = PolylineOptions()
+                        .addAll(latLngs)
+                        .color(android.graphics.Color.parseColor("#FF4081")) // 粉红色路线
+                        .width(8f)
+                    
+                    map.addPolyline(polylineOptions)
+                }
+            }
+            
             // 如果有起点和终点，调整视野以包含两点
             if (mapState.startLocation != null && mapState.endLocation != null) {
                 val startLatLng = LatLng(mapState.startLocation.latitude, mapState.startLocation.longitude)
@@ -257,6 +275,12 @@ private fun ActualMapComponent(
                 val boundsBuilder = com.amap.api.maps2d.model.LatLngBounds.Builder()
                 boundsBuilder.include(startLatLng)
                 boundsBuilder.include(endLatLng)
+                
+                // 如果有路线点，也包含在边界内
+                mapState.routeInfo?.polylinePoints?.forEach { point ->
+                    boundsBuilder.include(LatLng(point.latitude, point.longitude))
+                }
+                
                 val bounds = boundsBuilder.build()
                 
                 // 调整视野
