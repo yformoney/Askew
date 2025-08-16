@@ -46,10 +46,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +73,7 @@ import com.yy.askew.ui.TaxiOrderScreen
 import com.yy.askew.ui.OrderListScreen
 import com.yy.askew.http.example.LoginScreen
 import com.yy.askew.http.example.RegisterScreen
+import com.yy.askew.http.HttpManager
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -157,12 +160,18 @@ fun NavHostContainer(
                     navController.navigate(Screen.Search.route) {
                         popUpTo(Screen.Home.route)
                     }
+                },
+                onNavigateToLogin = {
+                    navController.navigate("login")
                 }
             )
         }
         composable("order_list") {
             OrderListScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToLogin = {
+                    navController.navigate("login")
+                }
             )
         }
         composable("login") {
@@ -191,6 +200,13 @@ fun NavHostContainer(
 // 6. 页面内容实现
 @Composable
 fun HomePage(navController: NavController? = null) {
+    val isLoggedIn = remember { 
+        try {
+            HttpManager.getAuthRepository().isLoggedIn()
+        } catch (e: Exception) {
+            false
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -299,18 +315,25 @@ fun HomePage(navController: NavController? = null) {
                 
                 Button(
                     onClick = { 
-                        navController?.navigate("taxi_order")
+                        if (isLoggedIn) {
+                            navController?.navigate("taxi_order")
+                        } else {
+                            navController?.navigate("login")
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = if (isLoggedIn) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.secondary
                     )
                 ) {
                     Text(
-                        text = "立即叫车",
+                        text = if (isLoggedIn) "立即叫车" else "登录后叫车",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -494,8 +517,18 @@ fun SearchPage(navController: NavController? = null) {
 @Composable
 fun ProfilePage(navController: NavController? = null) {
     val authViewModel: AuthViewModel = viewModel()
-    val isLoggedIn = remember { authViewModel.isLoggedIn() }
-    val currentUser = remember { authViewModel.getCurrentUser() }
+    var isLoggedIn by remember { mutableStateOf(authViewModel.isLoggedIn()) }
+    var currentUser by remember { mutableStateOf(authViewModel.getCurrentUser()) }
+    
+    // 监听登录状态变化
+    val loginState by authViewModel.loginState.collectAsState()
+    val registerState by authViewModel.registerState.collectAsState()
+    val logoutState by authViewModel.logoutState.collectAsState()
+    
+    LaunchedEffect(loginState, registerState, logoutState) {
+        isLoggedIn = authViewModel.isLoggedIn()
+        currentUser = authViewModel.getCurrentUser()
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -557,12 +590,15 @@ fun ProfilePage(navController: NavController? = null) {
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     
-                    if (isLoggedIn && currentUser != null) {
-                        Text(
-                            text = currentUser.email ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (isLoggedIn) {
+                        val user = currentUser
+                        if (user != null) {
+                            Text(
+                                text = user.email ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 

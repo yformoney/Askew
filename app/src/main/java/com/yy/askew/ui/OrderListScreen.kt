@@ -17,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yy.askew.viewmodel.OrderViewModel
 import com.yy.askew.http.model.ApiResult
 import com.yy.askew.http.model.Order
+import com.yy.askew.http.HttpManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -25,12 +26,16 @@ import java.util.*
 fun OrderListScreen(
     onNavigateBack: () -> Unit = {},
     onOrderClick: (String) -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     orderViewModel: OrderViewModel = viewModel()
 ) {
     val orderListState by orderViewModel.orderListState.collectAsState()
+    val isLoggedIn = remember { HttpManager.getAuthRepository().isLoggedIn() }
     
     LaunchedEffect(Unit) {
-        orderViewModel.getOrderList()
+        if (isLoggedIn) {
+            orderViewModel.getOrderList()
+        }
     }
     
     Column(
@@ -52,7 +57,33 @@ fun OrderListScreen(
             }
         )
         
-        when (val state = orderListState) {
+        if (!isLoggedIn) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "请先登录",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "登录后查看您的订单记录",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onNavigateToLogin
+                ) {
+                    Text("去登录")
+                }
+            }
+        } else when (val state = orderListState) {
             is ApiResult.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),

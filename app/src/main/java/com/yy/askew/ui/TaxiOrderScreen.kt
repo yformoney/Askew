@@ -13,12 +13,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yy.askew.viewmodel.OrderViewModel
 import com.yy.askew.http.model.ApiResult
+import com.yy.askew.http.example.AuthViewModel
+import com.yy.askew.http.HttpManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaxiOrderScreen(
     onNavigateBack: () -> Unit = {},
     onOrderCreated: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {},
     orderViewModel: OrderViewModel = viewModel()
 ) {
     var pickupLocation by remember { mutableStateOf("") }
@@ -26,6 +29,7 @@ fun TaxiOrderScreen(
     var notes by remember { mutableStateOf("") }
     
     val createOrderState by orderViewModel.createOrderState.collectAsState()
+    val isLoggedIn = remember { HttpManager.getAuthRepository().isLoggedIn() }
     
     LaunchedEffect(createOrderState) {
         val state = createOrderState
@@ -53,6 +57,32 @@ fun TaxiOrderScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (!isLoggedIn) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "请先登录",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "登录后即可享受便捷的打车服务",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+            
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -140,7 +170,9 @@ fun TaxiOrderScreen(
             
             Button(
                 onClick = {
-                    if (pickupLocation.isNotBlank() && destinationLocation.isNotBlank()) {
+                    if (!isLoggedIn) {
+                        onNavigateToLogin()
+                    } else if (pickupLocation.isNotBlank() && destinationLocation.isNotBlank()) {
                         orderViewModel.createTaxiOrder(
                             pickupLocation = pickupLocation,
                             destinationLocation = destinationLocation,
@@ -161,7 +193,7 @@ fun TaxiOrderScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("确认叫车")
+                Text(if (!isLoggedIn) "登录后叫车" else "确认叫车")
             }
             
             createOrderState?.let { state ->
