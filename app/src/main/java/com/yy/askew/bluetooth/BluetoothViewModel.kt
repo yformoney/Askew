@@ -104,11 +104,10 @@ class BluetoothViewModel : ViewModel() {
             return
         }
         
-        viewModelScope.launch {
-            val success = bluetoothManager?.connectToDevice(device) ?: false
-            if (!success) {
-                _errorMessage.value = "连接设备失败: ${device.name}"
-            }
+        // connectToDevice 现在是异步的，不需要在viewModelScope中再次启动
+        val success = bluetoothManager?.connectToDevice(device) ?: false
+        if (!success) {
+            _errorMessage.value = "连接设备失败: ${device.name}"
         }
     }
     

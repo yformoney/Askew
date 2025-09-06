@@ -15,6 +15,11 @@ import com.yy.askew.bluetooth.data.BluetoothScanState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import android.util.Log
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -28,6 +33,7 @@ import java.util.UUID
 class BluetoothManager private constructor(private val context: Context) {
     
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    private val scope = CoroutineScope(Dispatchers.IO)
     
     // 状态流
     private val _scanState = MutableStateFlow(BluetoothScanState.IDLE)
@@ -67,13 +73,16 @@ class BluetoothManager private constructor(private val context: Context) {
                             deviceType = getDeviceType(it)
                         )
                         
+                        Log.d(TAG, "Device found: ${deviceInfo.name} (${deviceInfo.address}) RSSI: ${rssi}dBm")
                         addDiscoveredDevice(deviceInfo)
                     }
                 }
                 BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
+                    Log.i(TAG, "Discovery started")
                     _scanState.value = BluetoothScanState.SCANNING
                 }
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                    Log.i(TAG, "Discovery finished")
                     _scanState.value = BluetoothScanState.STOPPED
                 }
             }
@@ -94,16 +103,26 @@ class BluetoothManager private constructor(private val context: Context) {
      * 开始扫描蓝牙设备
      */
     fun startScan(): Boolean {
-        if (!BluetoothPermissionHelper.hasAllPermissions(context) || 
-            !BluetoothPermissionHelper.isBluetoothEnabled()) {
+        if (!BluetoothPermissionHelper.hasAllPermissions(context)) {
+            Log.w(TAG, "Missing bluetooth permissions for scan")
             return false
         }
+        
+        if (!BluetoothPermissionHelper.isBluetoothEnabled()) {
+            Log.w(TAG, "Bluetooth is not enabled")
+            return false
+        }
+        
+        Log.i(TAG, "Starting bluetooth device scan")
         
         // 清空之前的发现列表
         _discoveredDevices.value = emptyList()
         
         // 添加已配对设备
-        bluetoothAdapter?.bondedDevices?.forEach { device ->
+        val bondedDevices = bluetoothAdapter?.bondedDevices
+        Log.i(TAG, "Found ${bondedDevices?.size ?: 0} bonded devices")
+        
+        bondedDevices?.forEach { device ->
             val deviceInfo = BluetoothDeviceInfo(
                 name = device.name ?: "未知设备",
                 address = device.address,
@@ -111,10 +130,13 @@ class BluetoothManager private constructor(private val context: Context) {
                 deviceType = getDeviceType(device)
             )
             addDiscoveredDevice(deviceInfo)
+            Log.d(TAG, "Added bonded device: ${device.name} (${device.address})")
         }
         
         // 开始发现新设备
-        return bluetoothAdapter?.startDiscovery() ?: false
+        val result = bluetoothAdapter?.startDiscovery() ?: false
+        Log.i(TAG, "Discovery started: $result")
+        return result
     }
     
     /**
@@ -129,60 +151,103 @@ class BluetoothManager private constructor(private val context: Context) {
      */
     fun connectToDevice(deviceInfo: BluetoothDeviceInfo): Boolean {
         if (!BluetoothPermissionHelper.hasAllPermissions(context)) {
+            Log.w(TAG, "Missing bluetooth permissions")
             return false
         }
         
-        val device = bluetoothAdapter?.getRemoteDevice(deviceInfo.address) ?: return false
-        
-        try {
-            _connectionState.value = BluetoothConnectionState.CONNECTING
-            
-            // 停止扫描以释放资源
-            bluetoothAdapter?.cancelDiscovery()
-            
-            // 创建RFCOMM套接字
-            bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID)
-            
-            // 连接设备
-            bluetoothSocket?.connect()
-            
-            // 获取输入输出流
-            inputStream = bluetoothSocket?.inputStream
-            outputStream = bluetoothSocket?.outputStream
-            
-            _connectionState.value = BluetoothConnectionState.CONNECTED
-            _connectedDevice.value = deviceInfo.copy(isConnected = true)
-            
-            // 开始监听数据
-            startListening()
-            
-            return true
-        } catch (e: IOException) {
-            _connectionState.value = BluetoothConnectionState.DISCONNECTED
-            disconnect()
+        val device = bluetoothAdapter?.getRemoteDevice(deviceInfo.address)
+        if (device == null) {
+            Log.e(TAG, "Cannot get remote device for address: ${deviceInfo.address}")
             return false
         }
+        
+        // 在后台线程执行连接操作
+        scope.launch {
+            try {
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.CONNECTING
+                }
+                
+                Log.i(TAG, "Starting connection to device: ${deviceInfo.name} (${deviceInfo.address})")
+                
+                // 停止扫描以释放资源
+                bluetoothAdapter?.cancelDiscovery()
+                
+                // 创建RFCOMM套接字
+                var socket = device.createRfcommSocketToServiceRecord(MY_UUID)
+                bluetoothSocket = socket
+                
+                // 连接设备（阻塞操作，在IO线程执行）
+                try {
+                    socket.connect()
+                } catch (e: IOException) {
+                    Log.w(TAG, "Standard connection failed, trying fallback method", e)
+                    // 备用连接方法，适用于某些设备
+                    socket.close()
+                    socket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"))
+                    bluetoothSocket = socket
+                    socket.connect()
+                }
+                
+                // 获取输入输出流
+                inputStream = socket.inputStream
+                outputStream = socket.outputStream
+                
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.CONNECTED
+                    _connectedDevice.value = deviceInfo.copy(isConnected = true)
+                }
+                
+                Log.i(TAG, "Successfully connected to device: ${deviceInfo.name}")
+                
+                // 开始监听数据
+                startListening()
+                
+            } catch (e: IOException) {
+                Log.e(TAG, "Failed to connect to device: ${deviceInfo.name}", e)
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.DISCONNECTED
+                }
+                disconnect()
+            }
+        }
+        
+        return true
     }
     
     /**
      * 断开连接
      */
     fun disconnect() {
-        try {
-            _connectionState.value = BluetoothConnectionState.DISCONNECTING
-            
-            inputStream?.close()
-            outputStream?.close()
-            bluetoothSocket?.close()
-            
-            inputStream = null
-            outputStream = null
-            bluetoothSocket = null
-            
-            _connectionState.value = BluetoothConnectionState.DISCONNECTED
-            _connectedDevice.value = null
-        } catch (e: IOException) {
-            // 忽略关闭时的异常
+        scope.launch {
+            try {
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.DISCONNECTING
+                }
+                
+                Log.i(TAG, "Disconnecting bluetooth connection")
+                
+                inputStream?.close()
+                outputStream?.close()
+                bluetoothSocket?.close()
+                
+                inputStream = null
+                outputStream = null
+                bluetoothSocket = null
+                
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.DISCONNECTED
+                    _connectedDevice.value = null
+                }
+                
+                Log.i(TAG, "Bluetooth disconnected successfully")
+            } catch (e: IOException) {
+                Log.w(TAG, "Error during disconnect", e)
+                withContext(Dispatchers.Main) {
+                    _connectionState.value = BluetoothConnectionState.DISCONNECTED
+                    _connectedDevice.value = null
+                }
+            }
         }
     }
     
@@ -262,6 +327,7 @@ class BluetoothManager private constructor(private val context: Context) {
     }
     
     companion object {
+        private const val TAG = "BluetoothManager"
         // 用于RFCOMM连接的UUID
         private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         
