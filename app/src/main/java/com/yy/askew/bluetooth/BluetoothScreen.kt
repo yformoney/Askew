@@ -379,17 +379,20 @@ private fun BluetoothMainContent(
             ScanStatusCard(uiState.scanState)
         }
         
-        // 已连接设备
+        // 已连接设备或选中的设备（用于距离显示）
         if (uiState.connectedDevice != null) {
-            item {
-                ConnectedDeviceCard(
-                    device = uiState.connectedDevice,
-                    connectionState = uiState.connectionState,
-                    onDisconnect = onDisconnect
-                )
+            // 连接状态卡片（仅在真正连接时显示）
+            if (uiState.connectionState == BluetoothConnectionState.CONNECTED) {
+                item {
+                    ConnectedDeviceCard(
+                        device = uiState.connectedDevice,
+                        connectionState = uiState.connectionState,
+                        onDisconnect = onDisconnect
+                    )
+                }
             }
             
-            // 距离显示卡片
+            // 距离显示卡片（无论是否连接都显示）
             item {
                 DistanceCard(
                     distanceResult = distanceResult,
@@ -405,7 +408,8 @@ private fun BluetoothMainContent(
                     hasLocationPermissions = hasLocationPermissions,
                     onRequestPermissions = onRequestLocationPermissions,
                     onCalculateDistance = onCalculateDistance,
-                    isConnected = true
+                    isConnected = uiState.connectionState == BluetoothConnectionState.CONNECTED,
+                    hasDevice = true
                 )
             }
         }
@@ -425,6 +429,7 @@ private fun BluetoothMainContent(
                 DeviceListItem(
                     device = device,
                     isConnected = device.address == uiState.connectedDevice?.address,
+                    isSelected = device.address == uiState.connectedDevice?.address,
                     distanceResult = if (device.address == uiState.connectedDevice?.address) distanceResult else null,
                     onClick = { onDeviceClick(device) }
                 )
@@ -552,6 +557,7 @@ private fun ConnectedDeviceCard(
 private fun DeviceListItem(
     device: BluetoothDeviceInfo,
     isConnected: Boolean,
+    isSelected: Boolean = false,
     distanceResult: com.yy.askew.location.DistanceResult? = null,
     onClick: () -> Unit
 ) {
@@ -561,10 +567,11 @@ private fun DeviceListItem(
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isConnected) 
-                Color(0xFFE8F5E8) 
-            else 
-                MaterialTheme.colorScheme.surface
+            containerColor = when {
+                isConnected -> Color(0xFFE8F5E8)
+                isSelected -> Color(0xFFFFF3E0)
+                else -> MaterialTheme.colorScheme.surface
+            }
         )
     ) {
         Row(
@@ -605,11 +612,21 @@ private fun DeviceListItem(
                         )
                     }
                     
-                    // 显示距离信息（仅对已连接设备）
-                    if (isConnected && distanceResult != null) {
+                    // 显示距离信息（对选中的设备）
+                    if (isSelected && distanceResult != null) {
                         CompactDistanceDisplay(
                             distanceResult = distanceResult
                         )
+                    } else if (device.rssi != 0) {
+                        // 显示估算距离
+                        val estimatedDistance = com.yy.askew.location.DistanceCalculator.calculateBluetoothDistance(device.rssi)
+                        if (estimatedDistance > 0) {
+                            Text(
+                                text = "约 ${com.yy.askew.location.DistanceCalculator.formatDistance(estimatedDistance)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -720,7 +737,8 @@ private fun LocationPermissionCard(
     hasLocationPermissions: Boolean,
     onRequestPermissions: () -> Unit,
     onCalculateDistance: () -> Unit,
-    isConnected: Boolean
+    isConnected: Boolean,
+    hasDevice: Boolean = false
 ) {
     if (!hasLocationPermissions) {
         ElevatedCard(
@@ -770,7 +788,7 @@ private fun LocationPermissionCard(
                 }
             }
         }
-    } else if (isConnected) {
+    } else if (hasDevice) {
         ElevatedCard(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
@@ -792,7 +810,7 @@ private fun LocationPermissionCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "计算与连接设备的精确距离",
+                        text = if (isConnected) "计算与连接设备的精确距离" else "基于蓝牙信号强度估算距离",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

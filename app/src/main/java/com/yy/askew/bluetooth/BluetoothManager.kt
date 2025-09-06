@@ -181,25 +181,59 @@ class BluetoothManager private constructor(private val context: Context) {
                 // 停止扫描以释放资源
                 bluetoothAdapter?.cancelDiscovery()
                 
-                // 创建RFCOMM套接字
-                var socket = device.createRfcommSocketToServiceRecord(MY_UUID)
-                bluetoothSocket = socket
+                // 尝试多种连接方法
+                var socket: BluetoothSocket? = null
+                var connected = false
+                val connectionMethods = listOf(
+                    { device.createRfcommSocketToServiceRecord(MY_UUID) },
+                    { device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")) },
+                    // 反射方法，适用于某些设备
+                    { 
+                        try {
+                            val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                            method.invoke(device, 1) as BluetoothSocket
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Reflection method failed", e)
+                            device.createRfcommSocketToServiceRecord(MY_UUID)
+                        }
+                    }
+                )
                 
-                // 连接设备（阻塞操作，在IO线程执行）
-                try {
-                    socket.connect()
-                } catch (e: IOException) {
-                    Log.w(TAG, "Standard connection failed, trying fallback method", e)
-                    // 备用连接方法，适用于某些设备
-                    socket.close()
-                    socket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805f9b34fb"))
-                    bluetoothSocket = socket
-                    socket.connect()
+                for ((index, createSocket) in connectionMethods.withIndex()) {
+                    try {
+                        socket = createSocket()
+                        bluetoothSocket = socket
+                        Log.i(TAG, "Trying connection method ${index + 1}")
+                        socket.connect()
+                        connected = true
+                        Log.i(TAG, "Connection successful with method ${index + 1}")
+                        break
+                    } catch (e: IOException) {
+                        Log.w(TAG, "Connection method ${index + 1} failed", e)
+                        socket?.close()
+                        socket = null
+                        if (index == connectionMethods.size - 1) {
+                            // 所有连接方法都失败了，但我们仍然可以基于RSSI显示距离
+                            Log.w(TAG, "All connection methods failed, will show distance based on RSSI only")
+                            withContext(Dispatchers.Main) {
+                                _connectionState.value = BluetoothConnectionState.DISCONNECTED
+                                // 设置一个虚拟连接状态，用于显示RSSI距离
+                                _connectedDevice.value = deviceInfo.copy(isConnected = false)
+                            }
+                            // 立即计算RSSI距离
+                            calculateRssiDistance(deviceInfo.rssi)
+                            return@launch
+                        }
+                    }
+                }
+                
+                if (!connected) {
+                    return@launch
                 }
                 
                 // 获取输入输出流
-                inputStream = socket.inputStream
-                outputStream = socket.outputStream
+                inputStream = socket?.inputStream
+                outputStream = socket?.outputStream
                 
                 withContext(Dispatchers.Main) {
                     _connectionState.value = BluetoothConnectionState.CONNECTED
@@ -346,6 +380,37 @@ class BluetoothManager private constructor(private val context: Context) {
      */
     fun stopLocationUpdates() {
         locationManager.stopLocationUpdates()
+    }
+    
+    /**
+     * 仅基于RSSI计算距离
+     */
+    private fun calculateRssiDistance(rssi: Int) {
+        scope.launch {
+            try {
+                val bluetoothDistance = if (rssi != 0) {
+                    DistanceCalculator.calculateBluetoothDistance(rssi)
+                } else {
+                    -1.0
+                }
+                
+                val result = DistanceResult(
+                    distance = bluetoothDistance,
+                    method = com.yy.askew.location.DistanceMethod.BLUETOOTH,
+                    accuracy = com.yy.askew.location.EstimatedAccuracy.MEDIUM,
+                    description = "基于蓝牙信号强度估算 (RSSI: ${rssi}dBm)"
+                )
+                
+                withContext(Dispatchers.Main) {
+                    _distanceResult.value = result
+                }
+                
+                Log.d(TAG, "RSSI distance calculated: ${result.getFormattedDistance()} (RSSI: ${rssi}dBm)")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error calculating RSSI distance", e)
+            }
+        }
     }
     
     /**
