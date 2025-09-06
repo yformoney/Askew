@@ -178,6 +178,23 @@ class BluetoothViewModel : ViewModel() {
         return bluetoothManager?.getLocationPermissions() ?: emptyArray()
     }
     
+    // 实时距离监控相关方法
+    fun startDistanceMonitoring(deviceAddress: String) {
+        bluetoothManager?.startDistanceMonitoring(deviceAddress)
+    }
+    
+    fun stopDistanceMonitoring() {
+        bluetoothManager?.stopDistanceMonitoring()
+    }
+    
+    fun isMonitoringDistance(): Boolean {
+        return bluetoothManager?.isMonitoringDistance() ?: false
+    }
+    
+    fun getMonitoringDeviceAddress(): String? {
+        return bluetoothManager?.getMonitoringDeviceAddress()
+    }
+    
     override fun onCleared() {
         super.onCleared()
         bluetoothManager?.release()

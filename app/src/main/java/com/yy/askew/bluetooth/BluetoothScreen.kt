@@ -232,7 +232,14 @@ fun BluetoothScreen(
                         val permissions = viewModel.getLocationPermissions()
                         locationPermissionLauncher.launch(permissions)
                     },
-                    onCalculateDistance = { viewModel.calculateDistance() }
+                    onCalculateDistance = { viewModel.calculateDistance() },
+                    onStartMonitoring = { address ->
+                        viewModel.startDistanceMonitoring(address)
+                    },
+                    onStopMonitoring = {
+                        viewModel.stopDistanceMonitoring()
+                    },
+                    isMonitoring = viewModel.isMonitoringDistance()
                 )
             }
         }
@@ -367,7 +374,10 @@ private fun BluetoothMainContent(
     onSendMessage: (String) -> Unit,
     onClearMessages: () -> Unit,
     onRequestLocationPermissions: () -> Unit,
-    onCalculateDistance: () -> Unit
+    onCalculateDistance: () -> Unit,
+    onStartMonitoring: (String) -> Unit,
+    onStopMonitoring: () -> Unit,
+    isMonitoring: Boolean
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -408,8 +418,15 @@ private fun BluetoothMainContent(
                     hasLocationPermissions = hasLocationPermissions,
                     onRequestPermissions = onRequestLocationPermissions,
                     onCalculateDistance = onCalculateDistance,
+                    onStartMonitoring = { 
+                        uiState.connectedDevice?.let { device ->
+                            onStartMonitoring(device.address)
+                        }
+                    },
+                    onStopMonitoring = onStopMonitoring,
                     isConnected = uiState.connectionState == BluetoothConnectionState.CONNECTED,
-                    hasDevice = true
+                    hasDevice = true,
+                    isMonitoring = isMonitoring
                 )
             }
         }
@@ -737,8 +754,11 @@ private fun LocationPermissionCard(
     hasLocationPermissions: Boolean,
     onRequestPermissions: () -> Unit,
     onCalculateDistance: () -> Unit,
+    onStartMonitoring: () -> Unit = {},
+    onStopMonitoring: () -> Unit = {},
     isConnected: Boolean,
-    hasDevice: Boolean = false
+    hasDevice: Boolean = false,
+    isMonitoring: Boolean = false
 ) {
     if (!hasLocationPermissions) {
         ElevatedCard(
@@ -796,33 +816,92 @@ private fun LocationPermissionCard(
                 containerColor = Color(0xFFF3E5F5)
             )
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp)
             ) {
-                Column {
-                    Text(
-                        text = "距离测量",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = if (isConnected) "计算与连接设备的精确距离" else "基于蓝牙信号强度估算距离",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "距离测量",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (isConnected) "计算与连接设备的精确距离" else "基于蓝牙信号强度估算距离",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    // 单次计算按钮
+                    if (!isMonitoring) {
+                        Button(
+                            onClick = onCalculateDistance,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF9C27B0)
+                            )
+                        ) {
+                            Text("计算距离", color = Color.White)
+                        }
+                    }
                 }
                 
-                Button(
-                    onClick = onCalculateDistance,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF9C27B0)
-                    )
+                // 实时监控区域
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("计算距离", color = Color.White)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isMonitoring) Icons.Default.Settings else Icons.Default.Refresh,
+                            contentDescription = "监控状态",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (isMonitoring) Color(0xFF4CAF50) else Color(0xFF757575)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isMonitoring) "实时监控中..." else "实时距离监控",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isMonitoring) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    // 监控开关按钮
+                    Button(
+                        onClick = if (isMonitoring) onStopMonitoring else onStartMonitoring,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isMonitoring) Color(0xFFF44336) else Color(0xFF4CAF50)
+                        ),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(
+                            text = if (isMonitoring) "停止" else "开始",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                
+                // 监控说明
+                if (isMonitoring) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "🔄 距离每2秒自动更新，移动设备可看到实时变化",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

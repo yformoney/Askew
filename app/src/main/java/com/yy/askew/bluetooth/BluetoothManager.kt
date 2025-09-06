@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
@@ -58,6 +60,11 @@ class BluetoothManager private constructor(private val context: Context) {
     // 距离计算状态
     private val _distanceResult = MutableStateFlow<DistanceResult?>(null)
     val distanceResult: StateFlow<DistanceResult?> = _distanceResult.asStateFlow()
+    
+    // 实时距离监控
+    private var isMonitoringDistance = false
+    private var monitoringDeviceAddress: String? = null
+    private var distanceMonitoringJob: Job? = null
     
     // 连接相关
     private var bluetoothSocket: BluetoothSocket? = null
@@ -362,6 +369,8 @@ class BluetoothManager private constructor(private val context: Context) {
         try {
             disconnect()
             stopScan()
+            stopDistanceMonitoring()
+            locationManager.stopLocationUpdates()
             context.unregisterReceiver(bluetoothReceiver)
         } catch (e: Exception) {
             // 忽略释放时的异常
@@ -469,6 +478,86 @@ class BluetoothManager private constructor(private val context: Context) {
     fun getLocationPermissions(): Array<String> {
         return locationManager.getRequiredPermissions()
     }
+    
+    /**
+     * 开始实时距离监控
+     */
+    fun startDistanceMonitoring(deviceAddress: String) {
+        monitoringDeviceAddress = deviceAddress
+        isMonitoringDistance = true
+        
+        distanceMonitoringJob?.cancel()
+        distanceMonitoringJob = scope.launch {
+            Log.i(TAG, "Starting real-time distance monitoring for device: $deviceAddress")
+            
+            while (isMonitoringDistance && monitoringDeviceAddress == deviceAddress) {
+                try {
+                    // 查找当前监控设备的最新RSSI
+                    val device = _discoveredDevices.value.find { it.address == deviceAddress }
+                    device?.let { deviceInfo ->
+                        if (deviceInfo.rssi != 0) {
+                            val bluetoothDistance = DistanceCalculator.calculateBluetoothDistance(deviceInfo.rssi)
+                            val currentLocation = locationManager.currentLocation.value
+                            
+                            // 创建距离结果
+                            val result = if (currentLocation != null) {
+                                DistanceResult(
+                                    distance = bluetoothDistance,
+                                    method = com.yy.askew.location.DistanceMethod.BLUETOOTH,
+                                    accuracy = com.yy.askew.location.EstimatedAccuracy.MEDIUM,
+                                    description = "实时蓝牙距离监控 (RSSI: ${deviceInfo.rssi}dBm)"
+                                )
+                            } else {
+                                DistanceResult(
+                                    distance = bluetoothDistance,
+                                    method = com.yy.askew.location.DistanceMethod.BLUETOOTH,
+                                    accuracy = com.yy.askew.location.EstimatedAccuracy.LOW,
+                                    description = "基于蓝牙信号强度 (RSSI: ${deviceInfo.rssi}dBm)"
+                                )
+                            }
+                            
+                            withContext(Dispatchers.Main) {
+                                _distanceResult.value = result
+                            }
+                            
+                            Log.d(TAG, "Real-time distance update: ${result.getFormattedDistance()} (RSSI: ${deviceInfo.rssi}dBm)")
+                        }
+                    }
+                    
+                    // 每2秒更新一次距离
+                    delay(2000)
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in distance monitoring", e)
+                    delay(5000) // 出错时延长间隔
+                }
+            }
+            
+            Log.i(TAG, "Distance monitoring stopped")
+        }
+    }
+    
+    /**
+     * 停止实时距离监控
+     */
+    fun stopDistanceMonitoring() {
+        isMonitoringDistance = false
+        monitoringDeviceAddress = null
+        distanceMonitoringJob?.cancel()
+        distanceMonitoringJob = null
+        
+        Log.i(TAG, "Distance monitoring stopped by user")
+    }
+    
+    /**
+     * 检查是否正在监控距离
+     */
+    fun isMonitoringDistance(): Boolean = isMonitoringDistance
+    
+    /**
+     * 获取正在监控的设备地址
+     */
+    fun getMonitoringDeviceAddress(): String? = monitoringDeviceAddress
     
     companion object {
         private const val TAG = "BluetoothManager"

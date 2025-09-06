@@ -18,6 +18,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.scale
 
 /**
  * 距离显示卡片组件
@@ -125,19 +134,43 @@ fun DistanceCard(
 /**
  * 距离结果显示组件
  */
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun DistanceDisplay(distanceResult: DistanceResult) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 主要距离显示
-        Text(
-            text = distanceResult.getFormattedDistance(),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF2E7D32),
-            fontSize = 32.sp
+        // 距离变化时的脉冲动画
+        val pulseAnimation = rememberInfiniteTransition(label = "pulse")
+        val scale by pulseAnimation.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.05f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale"
         )
+        
+        // 主要距离显示 - 带动画
+        AnimatedContent(
+            targetState = distanceResult.getFormattedDistance(),
+            transitionSpec = {
+                (slideInVertically { height -> height } + fadeIn()).togetherWith(
+                    slideOutVertically { height -> -height } + fadeOut()
+                )
+            },
+            label = "distance"
+        ) { formattedDistance ->
+            Text(
+                text = formattedDistance,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E7D32),
+                fontSize = 32.sp,
+                modifier = Modifier.scale(scale)
+            )
+        }
         
         Spacer(modifier = Modifier.height(8.dp))
         
