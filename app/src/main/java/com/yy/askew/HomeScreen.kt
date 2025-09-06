@@ -79,6 +79,7 @@ import com.yy.askew.http.example.RegisterScreen
 import com.yy.askew.http.HttpManager
 import com.yy.askew.map.MapComponent
 import com.yy.askew.map.MapViewModel
+import com.yy.askew.bluetooth.BluetoothScreen
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -243,6 +244,13 @@ fun NavHostContainer(
                     )
                     // 如果还没有起点，自动设置当前位置为起点
                     parentMapViewModel.ensureStartLocationAndCalculateRoute()
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable("bluetooth") {
+            BluetoothScreen(
+                onBackClick = {
                     navController.popBackStack()
                 }
             )
@@ -651,6 +659,12 @@ fun ProfilePage(navController: NavController? = null) {
                         icon = Icons.Default.AccountCircle,
                         text = "客服与帮助",
                         onClick = { /* TODO */ },
+                        showDivider = true
+                    )
+                    SimpleMenuItem(
+                        icon = Icons.Default.Settings,
+                        text = "蓝牙设备",
+                        onClick = { navController?.navigate("bluetooth") },
                         showDivider = true
                     )
                     SimpleMenuItem(
