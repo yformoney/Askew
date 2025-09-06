@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.yy.askew.bluetooth.data.BluetoothConnectionState
 import com.yy.askew.bluetooth.data.BluetoothDeviceInfo
 import com.yy.askew.bluetooth.data.BluetoothScanState
+import com.yy.askew.location.DistanceResult
+import com.yy.askew.location.LocationInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +30,14 @@ class BluetoothViewModel : ViewModel() {
     // 错误消息
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    
+    // 位置权限状态
+    private val _hasLocationPermissions = MutableStateFlow(false)
+    val hasLocationPermissions: StateFlow<Boolean> = _hasLocationPermissions.asStateFlow()
+    
+    // 距离计算结果
+    private val _distanceResult = MutableStateFlow<DistanceResult?>(null)
+    val distanceResult: StateFlow<DistanceResult?> = _distanceResult.asStateFlow()
     
     fun initBluetooth(bluetoothManager: BluetoothManager) {
         this.bluetoothManager = bluetoothManager
@@ -66,10 +76,21 @@ class BluetoothViewModel : ViewModel() {
                 }
             }
         }
+        
+        // 监听距离计算结果
+        viewModelScope.launch {
+            bluetoothManager.distanceResult.collect { result ->
+                _distanceResult.value = result
+            }
+        }
     }
     
     fun updatePermissionStatus(hasPermissions: Boolean) {
         _hasPermissions.value = hasPermissions
+    }
+    
+    fun updateLocationPermissionStatus(hasLocationPermissions: Boolean) {
+        _hasLocationPermissions.value = hasLocationPermissions
     }
     
     fun startScan() {
@@ -134,6 +155,27 @@ class BluetoothViewModel : ViewModel() {
     
     fun clearError() {
         _errorMessage.value = null
+    }
+    
+    // 位置和距离相关方法
+    fun startLocationUpdates(): Boolean {
+        return bluetoothManager?.startLocationUpdates() ?: false
+    }
+    
+    fun stopLocationUpdates() {
+        bluetoothManager?.stopLocationUpdates()
+    }
+    
+    fun calculateDistance(targetLocation: LocationInfo? = null) {
+        bluetoothManager?.calculateDistance(targetLocation)
+    }
+    
+    fun hasLocationPermissions(): Boolean {
+        return bluetoothManager?.hasLocationPermissions() ?: false
+    }
+    
+    fun getLocationPermissions(): Array<String> {
+        return bluetoothManager?.getLocationPermissions() ?: emptyArray()
     }
     
     override fun onCleared() {

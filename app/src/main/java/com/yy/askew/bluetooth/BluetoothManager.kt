@@ -20,6 +20,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
+import com.yy.askew.location.LocationManager
+import com.yy.askew.location.DistanceCalculator
+import com.yy.askew.location.DistanceResult
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -34,6 +37,7 @@ class BluetoothManager private constructor(private val context: Context) {
     
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val locationManager = LocationManager.getInstance(context)
     
     // 状态流
     private val _scanState = MutableStateFlow(BluetoothScanState.IDLE)
@@ -50,6 +54,10 @@ class BluetoothManager private constructor(private val context: Context) {
     
     private val _receivedData = MutableStateFlow<String>("")
     val receivedData: StateFlow<String> = _receivedData.asStateFlow()
+    
+    // 距离计算状态
+    private val _distanceResult = MutableStateFlow<DistanceResult?>(null)
+    val distanceResult: StateFlow<DistanceResult?> = _distanceResult.asStateFlow()
     
     // 连接相关
     private var bluetoothSocket: BluetoothSocket? = null
@@ -324,6 +332,77 @@ class BluetoothManager private constructor(private val context: Context) {
         } catch (e: Exception) {
             // 忽略释放时的异常
         }
+    }
+    
+    /**
+     * 开始位置更新和距离计算
+     */
+    fun startLocationUpdates(): Boolean {
+        return locationManager.startLocationUpdates()
+    }
+    
+    /**
+     * 停止位置更新
+     */
+    fun stopLocationUpdates() {
+        locationManager.stopLocationUpdates()
+    }
+    
+    /**
+     * 计算与连接设备的距离
+     */
+    fun calculateDistance(targetLocation: com.yy.askew.location.LocationInfo? = null) {
+        scope.launch {
+            try {
+                val currentLocation = locationManager.currentLocation.value
+                val connectedDeviceInfo = _connectedDevice.value
+                
+                // GPS距离计算
+                val gpsDistance = if (currentLocation != null && targetLocation != null) {
+                    DistanceCalculator.calculateGpsDistance(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                        targetLocation.latitude,
+                        targetLocation.longitude
+                    )
+                } else null
+                
+                // 蓝牙RSSI距离估算
+                val bluetoothDistance = connectedDeviceInfo?.rssi?.let { rssi ->
+                    DistanceCalculator.calculateBluetoothDistance(rssi)
+                }
+                
+                // 综合距离结果
+                val result = DistanceCalculator.getCombinedDistance(
+                    gpsDistance = gpsDistance,
+                    bluetoothDistance = bluetoothDistance,
+                    gpsAccuracy = currentLocation?.accuracy
+                )
+                
+                withContext(Dispatchers.Main) {
+                    _distanceResult.value = result
+                }
+                
+                Log.d(TAG, "Distance calculated: ${result.getFormattedDistance()} (${result.method})")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error calculating distance", e)
+            }
+        }
+    }
+    
+    /**
+     * 获取位置权限检查
+     */
+    fun hasLocationPermissions(): Boolean {
+        return locationManager.hasLocationPermissions()
+    }
+    
+    /**
+     * 获取位置权限列表
+     */
+    fun getLocationPermissions(): Array<String> {
+        return locationManager.getRequiredPermissions()
     }
     
     companion object {

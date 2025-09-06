@@ -72,6 +72,8 @@ import com.yy.askew.bluetooth.data.BluetoothConnectionState
 import com.yy.askew.bluetooth.data.BluetoothDeviceInfo
 import com.yy.askew.bluetooth.data.BluetoothDeviceType
 import com.yy.askew.bluetooth.data.BluetoothScanState
+import com.yy.askew.location.DistanceCard
+import com.yy.askew.location.CompactDistanceDisplay
 
 /**
  * 蓝牙功能主界面
@@ -85,15 +87,28 @@ fun BluetoothScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
+    val hasLocationPermissions by viewModel.hasLocationPermissions.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val distanceResult by viewModel.distanceResult.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // 权限请求启动器
-    val permissionLauncher = rememberLauncherForActivityResult(
+    // 蓝牙权限请求启动器
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         viewModel.updatePermissionStatus(allGranted)
+    }
+    
+    // 位置权限请求启动器
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        viewModel.updateLocationPermissionStatus(allGranted)
+        if (allGranted) {
+            viewModel.startLocationUpdates()
+        }
     }
     
     // 蓝牙启用请求启动器
@@ -113,6 +128,14 @@ fun BluetoothScreen(
         // 检查初始权限状态
         val hasPerms = BluetoothPermissionHelper.hasAllPermissions(context)
         viewModel.updatePermissionStatus(hasPerms)
+        
+        val hasLocationPerms = viewModel.hasLocationPermissions()
+        viewModel.updateLocationPermissionStatus(hasLocationPerms)
+        
+        // 如果有位置权限，开始位置更新
+        if (hasLocationPerms) {
+            viewModel.startLocationUpdates()
+        }
         
         onDispose { }
     }
@@ -176,10 +199,16 @@ fun BluetoothScreen(
             if (!hasPermissions) {
                 // 权限请求界面
                 PermissionRequestCard(
-                    onRequestPermissions = {
+                    onRequestBluetoothPermissions = {
                         val permissions = BluetoothPermissionHelper.getRequiredPermissions()
-                        permissionLauncher.launch(permissions)
-                    }
+                        bluetoothPermissionLauncher.launch(permissions)
+                    },
+                    onRequestLocationPermissions = {
+                        val permissions = viewModel.getLocationPermissions()
+                        locationPermissionLauncher.launch(permissions)
+                    },
+                    hasBluetoothPermissions = hasPermissions,
+                    hasLocationPermissions = hasLocationPermissions
                 )
             } else if (!BluetoothPermissionHelper.isBluetoothEnabled()) {
                 // 蓝牙未启用界面
@@ -193,10 +222,17 @@ fun BluetoothScreen(
                 // 主功能界面
                 BluetoothMainContent(
                     uiState = uiState,
+                    distanceResult = distanceResult,
+                    hasLocationPermissions = hasLocationPermissions,
                     onDeviceClick = viewModel::connectToDevice,
                     onDisconnect = viewModel::disconnect,
                     onSendMessage = viewModel::sendMessage,
-                    onClearMessages = viewModel::clearMessages
+                    onClearMessages = viewModel::clearMessages,
+                    onRequestLocationPermissions = {
+                        val permissions = viewModel.getLocationPermissions()
+                        locationPermissionLauncher.launch(permissions)
+                    },
+                    onCalculateDistance = { viewModel.calculateDistance() }
                 )
             }
         }
@@ -204,7 +240,12 @@ fun BluetoothScreen(
 }
 
 @Composable
-private fun PermissionRequestCard(onRequestPermissions: () -> Unit) {
+private fun PermissionRequestCard(
+    onRequestBluetoothPermissions: () -> Unit,
+    onRequestLocationPermissions: () -> Unit,
+    hasBluetoothPermissions: Boolean,
+    hasLocationPermissions: Boolean
+) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -223,24 +264,51 @@ private fun PermissionRequestCard(onRequestPermissions: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "需要蓝牙权限",
+                text = "需要权限",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "为了扫描和连接蓝牙设备，需要获取蓝牙和位置权限",
+                text = "为了实现完整的蓝牙定位功能，需要获取以下权限：",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onRequestPermissions,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00BCD4)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // 蓝牙权限
+            if (!hasBluetoothPermissions) {
+                Button(
+                    onClick = onRequestBluetoothPermissions,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00BCD4)
+                    )
+                ) {
+                    Text("授予蓝牙权限", color = Color.White)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            // 位置权限
+            if (!hasLocationPermissions) {
+                Button(
+                    onClick = onRequestLocationPermissions,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF9800)
+                    )
+                ) {
+                    Text("授予位置权限（用于距离计算）", color = Color.White)
+                }
+            }
+            
+            if (hasBluetoothPermissions && hasLocationPermissions) {
+                Text(
+                    text = "所有权限已获取✓",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF4CAF50)
                 )
-            ) {
-                Text("授予权限", color = Color.White)
             }
         }
     }
@@ -292,10 +360,14 @@ private fun BluetoothDisabledCard(onEnableBluetooth: () -> Unit) {
 @Composable
 private fun BluetoothMainContent(
     uiState: BluetoothUiState,
+    distanceResult: com.yy.askew.location.DistanceResult?,
+    hasLocationPermissions: Boolean,
     onDeviceClick: (BluetoothDeviceInfo) -> Unit,
     onDisconnect: () -> Unit,
     onSendMessage: (String) -> Unit,
-    onClearMessages: () -> Unit
+    onClearMessages: () -> Unit,
+    onRequestLocationPermissions: () -> Unit,
+    onCalculateDistance: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -316,6 +388,26 @@ private fun BluetoothMainContent(
                     onDisconnect = onDisconnect
                 )
             }
+            
+            // 距离显示卡片
+            item {
+                DistanceCard(
+                    distanceResult = distanceResult,
+                    targetDeviceName = uiState.connectedDevice.name,
+                    isCalculating = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            
+            // 位置权限提示和距离计算按钮
+            item {
+                LocationPermissionCard(
+                    hasLocationPermissions = hasLocationPermissions,
+                    onRequestPermissions = onRequestLocationPermissions,
+                    onCalculateDistance = onCalculateDistance,
+                    isConnected = true
+                )
+            }
         }
         
         // 设备列表
@@ -333,6 +425,7 @@ private fun BluetoothMainContent(
                 DeviceListItem(
                     device = device,
                     isConnected = device.address == uiState.connectedDevice?.address,
+                    distanceResult = if (device.address == uiState.connectedDevice?.address) distanceResult else null,
                     onClick = { onDeviceClick(device) }
                 )
             }
@@ -459,6 +552,7 @@ private fun ConnectedDeviceCard(
 private fun DeviceListItem(
     device: BluetoothDeviceInfo,
     isConnected: Boolean,
+    distanceResult: com.yy.askew.location.DistanceResult? = null,
     onClick: () -> Unit
 ) {
     Card(
@@ -499,12 +593,24 @@ private fun DeviceListItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (device.rssi != 0) {
-                    Text(
-                        text = "信号强度: ${device.rssi} dBm",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (device.rssi != 0) {
+                        Text(
+                            text = "信号强度: ${device.rssi} dBm",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    // 显示距离信息（仅对已连接设备）
+                    if (isConnected && distanceResult != null) {
+                        CompactDistanceDisplay(
+                            distanceResult = distanceResult
+                        )
+                    }
                 }
             }
             
@@ -604,6 +710,102 @@ private fun MessageSection(
                     contentDescription = "发送",
                     tint = Color.White
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationPermissionCard(
+    hasLocationPermissions: Boolean,
+    onRequestPermissions: () -> Unit,
+    onCalculateDistance: () -> Unit,
+    isConnected: Boolean
+) {
+    if (!hasLocationPermissions) {
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = Color(0xFFFFF3E0)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "位置权限",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFFFF9800)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "启用精确距离测量",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "授予位置权限以获取GPS精确距离",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = onRequestPermissions,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF9800)
+                    )
+                ) {
+                    Text("授予位置权限", color = Color.White)
+                }
+            }
+        }
+    } else if (isConnected) {
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = Color(0xFFF3E5F5)
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "距离测量",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "计算与连接设备的精确距离",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Button(
+                    onClick = onCalculateDistance,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF9C27B0)
+                    )
+                ) {
+                    Text("计算距离", color = Color.White)
+                }
             }
         }
     }
