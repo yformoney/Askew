@@ -662,7 +662,7 @@ fun ProfilePage(navController: NavController? = null) {
                         showDivider = true
                     )
                     SimpleMenuItem(
-                        icon = Icons.Default.Settings,
+                        icon = Icons.Default.Search,
                         text = "蓝牙设备",
                         onClick = { navController?.navigate("bluetooth") },
                         showDivider = true
