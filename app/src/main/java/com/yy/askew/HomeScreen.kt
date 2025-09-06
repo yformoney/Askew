@@ -540,217 +540,164 @@ fun ProfilePage(navController: NavController? = null) {
         isLoggedIn = authViewModel.isLoggedIn()
         currentUser = authViewModel.getCurrentUser()
     }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.surface
-                    )
-                )
-            )
+            .background(Color(0xFFF5F5F5))
     ) {
-        // 顶部用户信息区域
+        // 顶部淡蓝色渐变区域
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            Color(0xFFE0F7FA),
+                            Color(0xFFB2EBF2)
                         )
                     )
                 )
-                .padding(16.dp)
+                .padding(vertical = 60.dp)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // 用户头像
                 Box(
                     modifier = Modifier
                         .size(80.dp)
                         .background(
-                            Color.White.copy(alpha = 0.2f),
+                            Color.White,
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.AccountCircle,
+                        imageVector = Icons.Default.AccountCircle,
                         contentDescription = "用户头像",
-                        modifier = Modifier.size(60.dp),
-                        tint = Color.White
+                        modifier = Modifier.size(50.dp),
+                        tint = Color(0xFF00BCD4)
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
+                // 手机号码
                 Text(
                     text = if (isLoggedIn) {
-                        currentUser?.username ?: "用户"
+                        "131****6528"  // 模拟手机号
                     } else {
-                        "未登录"
+                        "点击登录"
                     },
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // 功能菜单列表
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // 第一组菜单
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 1.dp
+            ) {
+                Column {
+                    SimpleMenuItem(
+                        icon = Icons.Default.List,
+                        text = "我的行程",
+                        onClick = { navController?.navigate("order_list") },
+                        showDivider = true
+                    )
+                    SimpleMenuItem(
+                        icon = Icons.Default.Star,
+                        text = "卡券中心",
+                        onClick = { /* TODO */ },
+                        showDivider = true
+                    )
+                    SimpleMenuItem(
+                        icon = Icons.Default.Info,
+                        text = "消息通知",
+                        onClick = { /* TODO */ },
+                        showDivider = false
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // 第二组菜单
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 1.dp
+            ) {
+                Column {
+                    SimpleMenuItem(
+                        icon = Icons.Default.Person,
+                        text = "意见反馈",
+                        onClick = { /* TODO */ },
+                        showDivider = true
+                    )
+                    SimpleMenuItem(
+                        icon = Icons.Default.AccountCircle,
+                        text = "客服与帮助",
+                        onClick = { /* TODO */ },
+                        showDivider = true
+                    )
+                    SimpleMenuItem(
+                        icon = Icons.Default.Settings,
+                        text = "设置",
+                        onClick = { /* TODO */ },
+                        showDivider = false
+                    )
+                }
+            }
+        }
+        
+        // 如果未登录，显示登录按钮
+        if (!isLoggedIn) {
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = { navController?.navigate("login") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00BCD4)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "立即登录",
+                    style = MaterialTheme.typography.titleMedium,
                     color = Color.White
                 )
-                
-                if (isLoggedIn) {
-                    val user = currentUser
-                    if (user != null) {
-                        Text(
-                            text = user.email ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                    
-                    // 用户统计信息
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        UserStatCard(
-                            title = "总行程",
-                            value = "0",
-                            icon = Icons.Default.List
-                        )
-                        UserStatCard(
-                            title = "积分",
-                            value = "0",
-                            icon = Icons.Default.Star
-                        )
-                        UserStatCard(
-                            title = "优惠券",
-                            value = "0",
-                            icon = Icons.Default.AccountCircle
-                        )
-                    }
-                }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        // 登录/登出操作区域
-        if (!isLoggedIn) {
-            ElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "登录后享受更多服务",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "查看订单历史、管理常用地址、获取专属优惠",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    
-                    Button(
-                        onClick = { 
-                            navController?.navigate("login")
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "立即登录",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
         } else {
-            // 已登录用户的操作区域
-            ElevatedCard(
+            Spacer(modifier = Modifier.height(32.dp))
+            FilledTonalButton(
+                onClick = { authViewModel.logout() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
-                shape = RoundedCornerShape(16.dp)
+                    .padding(horizontal = 16.dp)
+                    .height(48.dp),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = { 
-                            authViewModel.logout()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("退出登录")
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        // 功能菜单区域
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp)
-            ) {
-                ProfileMenuItem(
-                    icon = Icons.Default.List,
-                    text = "我的订单",
-                    subtitle = "查看历史出行记录",
-                    onClick = { 
-                        navController?.navigate("order_list")
-                    }
-                )
-                
-                ProfileMenuItem(
-                    icon = Icons.Default.Star,
-                    text = "我的收藏",
-                    subtitle = "常用地址和路线",
-                    onClick = { /* TODO */ }
-                )
-                
-                ProfileMenuItem(
-                    icon = Icons.Default.Settings,
-                    text = "设置",
-                    subtitle = "个性化偏好设置",
-                    onClick = { /* TODO */ }
-                )
-                
-                ProfileMenuItem(
-                    icon = Icons.Default.Info,
-                    text = "帮助与反馈",
-                    subtitle = "常见问题和意见反馈",
-                    onClick = { /* TODO */ }
-                )
+                Text("退出登录")
             }
         }
         
-        Spacer(modifier = Modifier.height(80.dp)) // 底部间距
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
@@ -791,6 +738,55 @@ fun UserStatCard(
             style = MaterialTheme.typography.bodySmall,
             color = Color.White.copy(alpha = 0.8f)
         )
+    }
+}
+
+// 简化的菜单项组件
+@Composable
+fun SimpleMenuItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    showDivider: Boolean = true
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = "箭头",
+                modifier = Modifier.size(16.dp),
+                tint = Color.Gray
+            )
+        }
+        
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(Color.Gray.copy(alpha = 0.3f))
+                    .padding(start = 52.dp)
+            )
+        }
     }
 }
 
