@@ -553,6 +553,7 @@ fun ProfilePage(navController: NavController? = null) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
+            .verticalScroll(rememberScrollState())
     ) {
         // 顶部淡蓝色渐变区域
         Box(
@@ -711,7 +712,7 @@ fun ProfilePage(navController: NavController? = null) {
             }
         }
         
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(120.dp))
     }
 }
 
