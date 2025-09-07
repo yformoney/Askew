@@ -227,18 +227,25 @@ private fun ActualMapComponent(
             // 清除之前的标记
             map.clear()
             
-            // 更新用户位置
+            // 添加用户自身位置标记（蓝色圆点）
             mapState.userLocation?.let { location ->
                 val latLng = LatLng(location.latitude, location.longitude)
                 
-                // 如果没有起点和终点，或者需要强制居中到用户位置
-                if (mapState.startLocation == null && mapState.endLocation == null || mapState.shouldCenterOnUser) {
+                // 添加用户位置标记
+                val userMarker = MarkerOptions()
+                    .position(latLng)
+                    .title("我的位置")
+                    .snippet(location.address.ifEmpty { "当前位置" })
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                map.addMarker(userMarker)
+                
+                // 只在没有起点和终点时自动居中
+                if (mapState.startLocation == null && mapState.endLocation == null) {
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition(latLng, 16f, 0f, 0f)
                         )
                     )
-                    
                 }
             }
             
@@ -278,8 +285,17 @@ private fun ActualMapComponent(
                 }
             }
             
-            // 如果有起点和终点，调整视野以包含两点
-            if (mapState.startLocation != null && mapState.endLocation != null) {
+            // 如果需要居中到用户位置（用户点击了定位按钮）
+            if (mapState.shouldCenterOnUser && mapState.userLocation != null) {
+                val userLatLng = LatLng(mapState.userLocation.latitude, mapState.userLocation.longitude)
+                map.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition(userLatLng, 16f, 0f, 0f)
+                    )
+                )
+            }
+            // 如果有起点和终点，且不需要强制居中到用户位置，调整视野以包含两点
+            else if (mapState.startLocation != null && mapState.endLocation != null) {
                 val startLatLng = LatLng(mapState.startLocation.latitude, mapState.startLocation.longitude)
                 val endLatLng = LatLng(mapState.endLocation.latitude, mapState.endLocation.longitude)
                 
