@@ -213,7 +213,8 @@ private fun ActualMapComponent(
             map.uiSettings.isMyLocationButtonEnabled = false
             map.uiSettings.isCompassEnabled = false
             map.uiSettings.isScaleControlsEnabled = false
-            map.isMyLocationEnabled = true
+            // 禁用高德地图自带的定位标记，使用我们自定义的标记
+            map.isMyLocationEnabled = false
             
             // 地图点击事件
             map.setOnMapClickListener { latLng ->
