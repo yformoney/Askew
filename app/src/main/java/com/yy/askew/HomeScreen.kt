@@ -344,6 +344,26 @@ fun HomePage(navController: NavController? = null) {
                     contentDescription = "定位到当前位置"
                 )
             }
+            
+            // 城市边界显示切换按钮
+            FloatingActionButton(
+                onClick = { 
+                    // 切换城市边界显示
+                    val isShowing = mapState.showCityBoundary
+                    mapViewModel.toggleCityBoundary(!isShowing)
+                },
+                modifier = Modifier.size(48.dp),
+                containerColor = if (mapState.showCityBoundary) 
+                    MaterialTheme.colorScheme.primary else Color.White,
+                contentColor = if (mapState.showCityBoundary) 
+                    Color.White else MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = if (mapState.showCityBoundary) 
+                        "隐藏城市边界" else "显示城市边界"
+                )
+            }
         }
     }
 }

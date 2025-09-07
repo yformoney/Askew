@@ -161,6 +161,16 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         repository.resetMapCenterFlag()
     }
     
+    // 切换城市边界显示
+    fun toggleCityBoundary(show: Boolean = true) {
+        repository.toggleCityBoundaryDisplay(show)
+    }
+    
+    // 隐藏城市边界
+    fun hideCityBoundary() {
+        repository.toggleCityBoundaryDisplay(false)
+    }
+    
     override fun onCleared() {
         super.onCleared()
         repository.cleanup()

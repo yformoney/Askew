@@ -82,10 +82,14 @@ class MapRepository(private val context: Context) {
                         name = location.poiName ?: ""
                     )
                     
+                    // 提取城市信息
+                    val cityName = extractCityFromAddress(location.address ?: "")
+                    
                     _mapState.value = _mapState.value.copy(
                         userLocation = userLocation,
                         isLocationEnabled = true,
-                        permissionState = LocationPermissionState.Granted
+                        permissionState = LocationPermissionState.Granted,
+                        currentCity = cityName
                     )
                     
                     continuation.resume(userLocation)
@@ -261,6 +265,113 @@ class MapRepository(private val context: Context) {
     // 重置地图居中标记
     fun resetMapCenterFlag() {
         _mapState.value = _mapState.value.copy(shouldCenterOnUser = false)
+    }
+    
+    // 从地址中提取城市名称
+    private fun extractCityFromAddress(address: String): String? {
+        if (address.isEmpty()) return null
+        
+        // 常见城市名称匹配规则
+        val cityRegex = """([\u4e00-\u9fa5]+市)""".toRegex()
+        val match = cityRegex.find(address)
+        return match?.groupValues?.get(1)
+    }
+    
+    // 获取城市边界（简化版本，实际应用中可以调用行政区域API）
+    fun getCityBoundary(cityName: String): CityBoundary? {
+        return when (cityName) {
+            "广州市" -> createGuangzhouBoundary()
+            "深圳市" -> createShenzhenBoundary()
+            "北京市" -> createBeijingBoundary()
+            "上海市" -> createShanghaiBoundary()
+            else -> null // 暂不支持的城市
+        }
+    }
+    
+    // 创建广州市边界（简化版多边形）
+    private fun createGuangzhouBoundary(): CityBoundary {
+        val boundaryPoints = listOf(
+            Location(23.628, 113.264), // 东北角
+            Location(23.628, 113.106), // 西北角  
+            Location(23.129, 113.106), // 西南角
+            Location(23.129, 113.464), // 东南角
+            Location(23.400, 113.464), // 东部边界
+            Location(23.628, 113.264)  // 闭合回到起点
+        )
+        
+        return CityBoundary(
+            cityName = "广州市",
+            boundaryPoints = boundaryPoints,
+            centerLocation = Location(23.129110, 113.264385, "广州市中心")
+        )
+    }
+    
+    // 创建深圳市边界（示例）
+    private fun createShenzhenBoundary(): CityBoundary {
+        val boundaryPoints = listOf(
+            Location(22.691, 114.357),
+            Location(22.691, 113.753),
+            Location(22.447, 113.753),
+            Location(22.447, 114.357),
+            Location(22.691, 114.357)
+        )
+        
+        return CityBoundary(
+            cityName = "深圳市",
+            boundaryPoints = boundaryPoints,
+            centerLocation = Location(22.543, 114.055, "深圳市中心")
+        )
+    }
+    
+    // 创建北京市边界（示例）
+    private fun createBeijingBoundary(): CityBoundary {
+        val boundaryPoints = listOf(
+            Location(40.2, 116.7),
+            Location(40.2, 115.9),
+            Location(39.7, 115.9),
+            Location(39.7, 116.7),
+            Location(40.2, 116.7)
+        )
+        
+        return CityBoundary(
+            cityName = "北京市",
+            boundaryPoints = boundaryPoints,
+            centerLocation = Location(39.904, 116.407, "北京市中心")
+        )
+    }
+    
+    // 创建上海市边界（示例）
+    private fun createShanghaiBoundary(): CityBoundary {
+        val boundaryPoints = listOf(
+            Location(31.5, 121.8),
+            Location(31.5, 121.0),
+            Location(30.9, 121.0),
+            Location(30.9, 121.8),
+            Location(31.5, 121.8)
+        )
+        
+        return CityBoundary(
+            cityName = "上海市",
+            boundaryPoints = boundaryPoints,
+            centerLocation = Location(31.238, 121.501, "上海市中心")
+        )
+    }
+    
+    // 设置显示城市边界
+    fun toggleCityBoundaryDisplay(show: Boolean) {
+        val currentCity = _mapState.value.currentCity
+        if (show && currentCity != null) {
+            val boundary = getCityBoundary(currentCity)
+            _mapState.value = _mapState.value.copy(
+                cityBoundary = boundary,
+                showCityBoundary = true
+            )
+        } else {
+            _mapState.value = _mapState.value.copy(
+                showCityBoundary = false,
+                cityBoundary = null
+            )
+        }
     }
     
     fun cleanup() {

@@ -277,6 +277,11 @@ private fun ActualMapComponent(
                 }
             }
             
+            // 绘制城市边界和蒙层
+            if (mapState.showCityBoundary && mapState.cityBoundary != null) {
+                drawCityBoundaryAndOverlay(map, mapState.cityBoundary)
+            }
+            
             // 如果需要居中到用户位置（用户点击了定位按钮）
             if (mapState.shouldCenterOnUser) {
                 // 直接使用高德地图的当前位置居中
@@ -335,3 +340,41 @@ private fun ActualMapComponent(
         }
     }
 }
+
+// 绘制城市边界和蒙层的辅助函数
+private fun drawCityBoundaryAndOverlay(map: com.amap.api.maps2d.AMap, cityBoundary: com.yy.askew.map.data.CityBoundary) {
+    // 1. 绘制城市边界线
+    if (cityBoundary.boundaryPoints.isNotEmpty()) {
+        val boundaryLatLngs = cityBoundary.boundaryPoints.map { 
+            LatLng(it.latitude, it.longitude) 
+        }
+        
+        // 城市边界线（蓝色实线）
+        val boundaryPolyline = PolylineOptions()
+            .addAll(boundaryLatLngs)
+            .color(android.graphics.Color.parseColor("#2196F3")) // 蓝色边界线
+            .width(4f)
+        
+        map.addPolyline(boundaryPolyline)
+        
+        // 2. 城市区域高亮显示（浅蓝色半透明填充）
+        val cityPolygon = com.amap.api.maps2d.model.PolygonOptions()
+            .addAll(boundaryLatLngs)
+            .fillColor(android.graphics.Color.parseColor("#1A2196F3")) // 半透明蓝色填充
+            .strokeColor(android.graphics.Color.parseColor("#2196F3"))
+            .strokeWidth(2f)
+        
+        map.addPolygon(cityPolygon)
+        
+        // 3. 添加外围蒙层效果（暂时简化实现）
+        // addOverlayMask(map, boundaryLatLngs)
+    }
+}
+
+// 添加蒙层效果（城市外区域变暗）- 暂时禁用，因为高德2D API可能不支持洞
+/*
+private fun addOverlayMask(map: com.amap.api.maps2d.AMap, cityBounds: List<LatLng>) {
+    // 高德2D地图API暂时不支持带洞的多边形
+    // 可以考虑使用多个矩形来实现蒙层效果
+}
+*/
