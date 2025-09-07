@@ -251,24 +251,27 @@ private fun ActualMapComponent(
                 }
             }
             
-            // 添加起点标记
-            mapState.startLocation?.let { location ->
-                val marker = MarkerOptions()
-                    .position(LatLng(location.latitude, location.longitude))
-                    .title("起点")
-                    .snippet(location.address.ifEmpty { "当前位置" })
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                map.addMarker(marker)
-            }
-            
-            // 添加终点标记
-            mapState.endLocation?.let { location ->
-                val marker = MarkerOptions()
-                    .position(LatLng(location.latitude, location.longitude))
-                    .title("终点")
-                    .snippet(location.address.ifEmpty { "目的地" })
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                map.addMarker(marker)
+            // 只有在进行路线规划时才显示起点终点标记
+            if (mapState.routeInfo != null) {
+                // 添加起点标记
+                mapState.startLocation?.let { location ->
+                    val marker = MarkerOptions()
+                        .position(LatLng(location.latitude, location.longitude))
+                        .title("起点")
+                        .snippet(location.address.ifEmpty { "当前位置" })
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                    map.addMarker(marker)
+                }
+                
+                // 添加终点标记
+                mapState.endLocation?.let { location ->
+                    val marker = MarkerOptions()
+                        .position(LatLng(location.latitude, location.longitude))
+                        .title("终点")
+                        .snippet(location.address.ifEmpty { "目的地" })
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                    map.addMarker(marker)
+                }
             }
             
             // 绘制路线
