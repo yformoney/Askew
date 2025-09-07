@@ -244,7 +244,9 @@ private fun ActualMapComponent(
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition(latLng, 16f, 0f, 0f)
-                        )
+                        ),
+                        1000, // 初始加载动画1秒
+                        null
                     )
                 }
             }
@@ -288,10 +290,13 @@ private fun ActualMapComponent(
             // 如果需要居中到用户位置（用户点击了定位按钮）
             if (mapState.shouldCenterOnUser && mapState.userLocation != null) {
                 val userLatLng = LatLng(mapState.userLocation.latitude, mapState.userLocation.longitude)
+                // 使用平滑动画过渡，持续时间1.5秒
                 map.animateCamera(
                     CameraUpdateFactory.newCameraPosition(
-                        CameraPosition(userLatLng, 16f, 0f, 0f)
-                    )
+                        CameraPosition(userLatLng, 17f, 0f, 0f)
+                    ),
+                    1500, // 动画持续时间1.5秒
+                    null
                 )
             }
             // 如果有起点和终点，且不需要强制居中到用户位置，调整视野以包含两点
