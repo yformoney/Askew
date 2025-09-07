@@ -306,15 +306,6 @@ fun HomePage(navController: NavController? = null) {
                 .padding(16.dp)
         )
         
-        // 地图上的推荐上车点信息卡片
-        mapState.userLocation?.let { location ->
-            RecommendedPickupCard(
-                address = "汉溪王（广州大学城）-对面",
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 16.dp)
-            )
-        }
         
         // 底部搜索和快捷功能区域
         BottomSearchSection(
@@ -326,9 +317,6 @@ fun HomePage(navController: NavController? = null) {
             },
             onWorkAddressClick = {
                 // TODO: 设置公司地址
-            },
-            onBookingClick = {
-                // TODO: 预约专车
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -901,56 +889,6 @@ fun TopStatusBar(
     }
 }
 
-// 推荐上车点信息卡片
-@Composable
-fun RecommendedPickupCard(
-    address: String,
-    modifier: Modifier = Modifier
-) {
-    ElevatedCard(
-        modifier = modifier,
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = Color.White
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        Color(0xFF00BCD4),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "推荐上车点",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
-                    fontSize = 10.sp
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = address,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = "箭头",
-                modifier = Modifier.size(16.dp),
-                tint = Color.Gray
-            )
-        }
-    }
-}
 
 // 底部搜索和快捷功能区域
 @Composable
@@ -958,7 +896,6 @@ fun BottomSearchSection(
     onDestinationClick: () -> Unit,
     onHomeAddressClick: () -> Unit,
     onWorkAddressClick: () -> Unit,
-    onBookingClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1021,38 +958,6 @@ fun BottomSearchSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // 预约专车接送卡片
-        ElevatedCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onBookingClick() },
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = Color(0xFFE0F7FA)
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "预约专车接送",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF00695C)
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = "预约",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF00695C)
-                )
-            }
-        }
     }
 }
 
