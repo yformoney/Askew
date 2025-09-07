@@ -213,8 +213,8 @@ private fun ActualMapComponent(
             map.uiSettings.isMyLocationButtonEnabled = false
             map.uiSettings.isCompassEnabled = false
             map.uiSettings.isScaleControlsEnabled = false
-            // 禁用高德地图自带的定位标记，使用我们自定义的标记
-            map.isMyLocationEnabled = false
+            // 启用高德地图自带的准确定位标记
+            map.isMyLocationEnabled = true
             
             // 地图点击事件
             map.setOnMapClickListener { latLng ->
@@ -228,28 +228,14 @@ private fun ActualMapComponent(
             // 清除之前的标记
             map.clear()
             
-            // 添加用户自身位置标记（蓝色圆点）
-            mapState.userLocation?.let { location ->
-                val latLng = LatLng(location.latitude, location.longitude)
-                
-                // 添加用户位置标记
-                val userMarker = MarkerOptions()
-                    .position(latLng)
-                    .title("我的位置")
-                    .snippet(location.address.ifEmpty { "当前位置" })
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
-                map.addMarker(userMarker)
-                
-                // 只在没有起点和终点时自动居中
-                if (mapState.startLocation == null && mapState.endLocation == null) {
-                    map.animateCamera(
-                        CameraUpdateFactory.newCameraPosition(
-                            CameraPosition(latLng, 16f, 0f, 0f)
-                        ),
-                        1000, // 初始加载动画1秒
-                        null
-                    )
-                }
+            // 如果需要居中到用户位置，使用高德自带的定位功能
+            if (mapState.shouldCenterOnUser) {
+                // 获取当前真实位置并居中，由高德地图自动处理
+                map.animateCamera(
+                    CameraUpdateFactory.zoomTo(17f),
+                    1500, // 1.5秒动画
+                    null
+                )
             }
             
             // 只有在进行路线规划时才显示起点终点标记
@@ -292,15 +278,25 @@ private fun ActualMapComponent(
             }
             
             // 如果需要居中到用户位置（用户点击了定位按钮）
-            if (mapState.shouldCenterOnUser && mapState.userLocation != null) {
-                val userLatLng = LatLng(mapState.userLocation.latitude, mapState.userLocation.longitude)
-                // 使用平滑动画过渡，持续时间1.5秒
+            if (mapState.shouldCenterOnUser) {
+                // 让高德地图自动定位并居中到真实GPS位置
                 map.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition(userLatLng, 17f, 0f, 0f)
-                    ),
+                    CameraUpdateFactory.zoomTo(17f),
                     1500, // 动画持续时间1.5秒
-                    null
+                    object : com.amap.api.maps2d.AMap.CancelableCallback {
+                        override fun onFinish() {
+                            // 动画完成后，如果有定位信息则居中
+                            if (map.myLocation != null) {
+                                val myLoc = map.myLocation
+                                map.animateCamera(
+                                    CameraUpdateFactory.newLatLngZoom(
+                                        LatLng(myLoc.latitude, myLoc.longitude), 17f
+                                    )
+                                )
+                            }
+                        }
+                        override fun onCancel() {}
+                    }
                 )
             }
             // 如果有起点和终点，且不需要强制居中到用户位置，调整视野以包含两点
