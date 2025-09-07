@@ -152,24 +152,8 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     
     // 定位到当前位置并居中显示
     fun centerOnCurrentLocation() {
-        viewModelScope.launch {
-            try {
-                // 强制获取新的GPS位置（每次点击都重新定位）
-                val freshLocation = repository.getCurrentLocation()
-                if (freshLocation != null) {
-                    // 触发地图居中动画
-                    repository.triggerMapRecenter()
-                } else {
-                    // 如果获取位置失败，但已有位置，则使用已有位置
-                    val existingLocation = mapState.value.userLocation
-                    if (existingLocation != null) {
-                        repository.triggerMapRecenter()
-                    }
-                }
-            } catch (e: Exception) {
-                // 错误处理已在repository中实现
-            }
-        }
+        // 直接触发地图居中到当前位置（使用高德原生定位）
+        repository.triggerMapRecenter()
     }
     
     // 重置地图居中标记

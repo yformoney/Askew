@@ -279,25 +279,26 @@ private fun ActualMapComponent(
             
             // 如果需要居中到用户位置（用户点击了定位按钮）
             if (mapState.shouldCenterOnUser) {
-                // 让高德地图自动定位并居中到真实GPS位置
-                map.animateCamera(
-                    CameraUpdateFactory.zoomTo(17f),
-                    1500, // 动画持续时间1.5秒
-                    object : com.amap.api.maps2d.AMap.CancelableCallback {
-                        override fun onFinish() {
-                            // 动画完成后，如果有定位信息则居中
-                            if (map.myLocation != null) {
-                                val myLoc = map.myLocation
-                                map.animateCamera(
-                                    CameraUpdateFactory.newLatLngZoom(
-                                        LatLng(myLoc.latitude, myLoc.longitude), 17f
-                                    )
-                                )
-                            }
-                        }
-                        override fun onCancel() {}
-                    }
-                )
+                // 直接使用高德地图的当前位置居中
+                val currentLocation = map.myLocation
+                if (currentLocation != null) {
+                    // 有当前位置，直接居中
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(currentLocation.latitude, currentLocation.longitude), 
+                            17f
+                        ),
+                        1500, // 动画持续时间1.5秒
+                        null
+                    )
+                } else {
+                    // 没有当前位置，先放大然后等待定位
+                    map.animateCamera(
+                        CameraUpdateFactory.zoomTo(17f),
+                        1500,
+                        null
+                    )
+                }
             }
             // 如果有起点和终点，且不需要强制居中到用户位置，调整视野以包含两点
             else if (mapState.startLocation != null && mapState.endLocation != null) {
