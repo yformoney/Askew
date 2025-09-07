@@ -154,12 +154,17 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun centerOnCurrentLocation() {
         viewModelScope.launch {
             try {
-                val currentLocation = repository.getCurrentLocation()
-                currentLocation?.let { location ->
-                    // 清除模拟位置标记，确保使用真实GPS
-                    repository.clearSimulatedLocation()
-                    // 触发地图重新居中（通过状态更新）
+                // 首先检查是否已有用户位置
+                val currentUserLocation = mapState.value.userLocation
+                if (currentUserLocation != null) {
+                    // 如果已有位置，直接触发居中
                     repository.triggerMapRecenter()
+                } else {
+                    // 如果没有位置，获取新位置并触发居中
+                    val newLocation = repository.getCurrentLocation()
+                    if (newLocation != null) {
+                        repository.triggerMapRecenter()
+                    }
                 }
             } catch (e: Exception) {
                 // 错误处理已在repository中实现

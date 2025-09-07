@@ -909,7 +909,7 @@ fun BottomSearchSection(
                 .fillMaxWidth()
                 .clickable { onDestinationClick() },
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.elevatedCardColors(
                 containerColor = Color.White
             )
@@ -917,19 +917,19 @@ fun BottomSearchSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "搜索",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                     tint = Color(0xFF00BCD4)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "请输入您的目的地",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Color.Gray
                 )
             }
