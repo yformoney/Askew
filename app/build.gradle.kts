@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
-    id("com.yy.versioning")
+    id("com.yy.params")
 }
 
 android {
@@ -15,13 +15,14 @@ android {
         minSdk = 24
         targetSdk = 35
         // versionName/versionCode are now provided by the versioning plugin
-
+        
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
         
         // AppAuth redirect scheme configuration
+        // This value can be overridden by params plugin bindings below
         manifestPlaceholders["appAuthRedirectScheme"] = "com.yy.askew"
     }
 
@@ -91,4 +92,18 @@ dependencies {
     // Unit test helpers
     testImplementation("com.squareup.okhttp3:mockwebserver:4.10.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+}
+
+// Parameter bindings and typed fetches
+params {
+    // Example bindings to populate from env -> file
+    manifestPlaceholder(name = "appAuthRedirectScheme", fromKey = "APP_AUTH_REDIRECT_SCHEME")
+    // Expose an API env name to resources
+    resValue(type = "string", name = "api_env", fromKey = "API_ENV")
+    // BuildConfig fields of different types
+    buildConfigField(type = "String", name = "API_BASE_URL", fromKey = "API_BASE_URL")
+    buildConfigField(type = "int", name = "FEATURE_FLAG_BITS", fromKey = "FEATURE_FLAG_BITS")
+    buildConfigField(type = "boolean", name = "ENABLE_ANALYTICS", fromKey = "ENABLE_ANALYTICS")
+    // Extra property usable elsewhere in Gradle
+    extra(name = "releaseChannel", fromKey = "CI_CHANNEL")
 }
