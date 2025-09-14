@@ -9,7 +9,7 @@ plugins {
 }
 
 val paramsExt = extensions.getByType<ParamsExtension>()
-paramsExt.configFile.set(rootProject.layout.projectDirectory.file("version.properties"))
+paramsExt.configFile.set(rootProject.layout.projectDirectory.file("config.properties"))
 
 android {
     namespace = "com.yy.askew"
@@ -101,5 +101,6 @@ dependencies {
 }
 
 // Parameter bindings and typed fetches
+
 
 
