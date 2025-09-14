@@ -9,9 +9,8 @@ import java.util.Properties
 
 open class ParamsExtension @Inject constructor(objects: ObjectFactory) {
     val configFile: RegularFileProperty = objects.fileProperty()
-
-    // Typed getters for use in build scripts
     internal lateinit var resolver: (String) -> String?
+
     fun getString(key: String, default: String? = null): String? = resolver(key) ?: default
     fun getInt(key: String, default: Int? = null): Int? = resolver(key)?.toIntOrNull() ?: default
     fun getLong(key: String, default: Long? = null): Long? = resolver(key)?.toLongOrNull() ?: default
@@ -28,10 +27,6 @@ private fun toBoolean(v: String): Boolean? = when (v.trim().lowercase()) {
 class ParamsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         val ext = project.extensions.create("params", ParamsExtension::class.java)
-        // Default config file path
-        ext.configFile.convention(project.rootProject.layout.projectDirectory.file("version.properties"))
-
-        // Wire resolver with precedence: env > file
         val vr = ValueResolver { ext.configFile.orNull?.asFile }
         ext.resolver = { key -> vr.resolve(key) }
     }
@@ -50,7 +45,6 @@ private class ValueResolver(private val fileProvider: () -> java.io.File?) {
     }
 
     fun resolve(key: String): String? {
-        // Env first, then file
         val env = System.getenv(key)
         if (!env.isNullOrBlank()) return env
         val fileVal = props().getProperty(key)
@@ -58,3 +52,4 @@ private class ValueResolver(private val fileProvider: () -> java.io.File?) {
         return null
     }
 }
+internal data class ExtraBinding(val name: String, val fromKey: String)

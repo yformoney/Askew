@@ -8,8 +8,3 @@ repositories {
     mavenCentral()
     gradlePluginPortal()
 }
-
-dependencies {
-    // For typed access to Android DSL
-    compileOnly("com.android.tools.build:gradle:8.6.1")
-}
