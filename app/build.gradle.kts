@@ -1,3 +1,5 @@
+import com.yy.askew.params.ParamsExtension
+
 @Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     alias(libs.plugins.androidApplication)
@@ -5,6 +7,8 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     id("com.yy.params")
 }
+
+val paramsExt = extensions.getByType<ParamsExtension>()
 
 android {
     namespace = "com.yy.askew"
@@ -14,7 +18,9 @@ android {
         applicationId = "com.yy.askew"
         minSdk = 24
         targetSdk = 35
-        // versionName/versionCode are now provided by the versioning plugin
+        // 使用 params 插件按优先级读取版本号/名（环境变量 > 配置文件）
+        versionName = paramsExt.getString("VERSION_NAME", "1.0.0") ?: "1.0.0"
+        versionCode = paramsExt.getInt("VERSION_CODE", 1) ?: 1
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

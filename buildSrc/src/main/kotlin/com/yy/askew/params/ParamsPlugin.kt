@@ -60,44 +60,14 @@ class ParamsPlugin : Plugin<Project> {
         ext.resolver = { key -> vr.resolve(key) }
 
         project.plugins.withId("com.android.application") {
-            // Apply versions first
-            val versionName = ext.resolver(ext.envNameKey.get()) ?: ext.resolver(ext.fileNameKey.get())
-            val versionCode = ext.resolver(ext.envCodeKey.get())?.toIntOrNull()
-                ?: ext.resolver(ext.fileCodeKey.get())?.toIntOrNull()
-
-            setAndroidConfig(project, versionName, versionCode, ext)
+            // Only apply generic bindings here; versionName/versionCode should be set explicitly in module build.gradle using params getters.
+            applyBindings(project, ext)
         }
     }
 
-    private fun setAndroidConfig(project: Project, versionName: String?, versionCode: Int?, ext: ParamsExtension) {
+    private fun applyBindings(project: Project, ext: ParamsExtension) {
         val android = project.extensions.findByName("android") ?: return
         val defaultConfig = android.javaClass.methods.firstOrNull { it.name == "getDefaultConfig" && it.parameterCount == 0 }?.invoke(android) ?: return
-
-        // versionName
-        versionName?.let { name ->
-            try {
-                defaultConfig.javaClass.methods.firstOrNull { it.name == "setVersionName" && it.parameterCount == 1 }?.let { m ->
-                    try { m.isAccessible = true } catch (_: Throwable) {}
-                    m.invoke(defaultConfig, name)
-                    project.logger.lifecycle("[params] versionName={}", name)
-                }
-            } catch (e: Throwable) {
-                project.logger.warn("[params] Failed to set versionName: ${e.message}")
-            }
-        }
-
-        // versionCode
-        versionCode?.let { code ->
-            try {
-                defaultConfig.javaClass.methods.firstOrNull { it.name == "setVersionCode" && it.parameterCount == 1 }?.let { m ->
-                    try { m.isAccessible = true } catch (_: Throwable) {}
-                    m.invoke(defaultConfig, code)
-                    project.logger.lifecycle("[params] versionCode={}", code)
-                }
-            } catch (e: Throwable) {
-                project.logger.warn("[params] Failed to set versionCode: ${e.message}")
-            }
-        }
 
         // Resolve and apply bindings
         val values = resolveAll(project, ext)
