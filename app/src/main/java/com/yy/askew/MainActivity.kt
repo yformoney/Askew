@@ -1,6 +1,4 @@
 package com.yy.askew
-
-import com.yy.askew.shadow.TopArcRoundedRectDemo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.yy.askew.performance.PerformanceDashboard
 import com.yy.askew.ui.theme.AppTheme
 
 // 1. 定义路由和导航项
