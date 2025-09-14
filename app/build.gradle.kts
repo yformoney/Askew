@@ -18,8 +18,7 @@ android {
         applicationId = "com.yy.askew"
         minSdk = 24
         targetSdk = 35
-        // 使用 params 插件按优先级读取版本号/名（环境变量 > 配置文件）
-        versionName = paramsExt.getString("VERSION_NAME", "1.0.0") ?: "1.0.0"
+        // 使用 params 插件按优先级读取版本�?名（环境变量 > 配置文件�?        versionName = paramsExt.getString("VERSION_NAME", "1.0.0") ?: "1.0.0"
         versionCode = paramsExt.getInt("VERSION_CODE", 1) ?: 1
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -69,10 +68,10 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
     implementation(libs.material3)
-    implementation(libs.androidx.lifecycle.viewmodel.compose) // 使用最新稳定版本
+    implementation(libs.androidx.lifecycle.viewmodel.compose) // 使用最新稳定版�?
     implementation(libs.androidx.material3)
 //    implementation(libs.androidx.navigation.runtime.android)
-    implementation(libs.androidx.navigation.compose) // M3 核心库
+    implementation(libs.androidx.navigation.compose) // M3 核心�?
 
 
     implementation("com.squareup.okhttp3:okhttp:4.10.0")  // 网络请求
@@ -101,15 +100,4 @@ dependencies {
 }
 
 // Parameter bindings and typed fetches
-params {
-    // Example bindings to populate from env -> file
-    manifestPlaceholder(name = "appAuthRedirectScheme", fromKey = "APP_AUTH_REDIRECT_SCHEME")
-    // Expose an API env name to resources
-    resValue(type = "string", name = "api_env", fromKey = "API_ENV")
-    // BuildConfig fields of different types
-    buildConfigField(type = "String", name = "API_BASE_URL", fromKey = "API_BASE_URL")
-    buildConfigField(type = "int", name = "FEATURE_FLAG_BITS", fromKey = "FEATURE_FLAG_BITS")
-    buildConfigField(type = "boolean", name = "ENABLE_ANALYTICS", fromKey = "ENABLE_ANALYTICS")
-    // Extra property usable elsewhere in Gradle
-    extra(name = "releaseChannel", fromKey = "CI_CHANNEL")
-}
+
