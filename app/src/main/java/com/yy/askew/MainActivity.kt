@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -28,7 +28,7 @@ sealed class Screen(
     val icon: ImageVector
 ) {
     object Home : Screen("home", "叫车", Icons.Filled.Home)
-    object Search : Screen("search", "订单", Icons.Filled.List)
+    object Search : Screen("search", "订单", Icons.AutoMirrored.Filled.List)
     object Profile : Screen("profile", "我的", Icons.Filled.Person)
 }
 
